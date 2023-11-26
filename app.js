@@ -23,7 +23,7 @@ const endpoints = {
             where: {},
             columns: ["*"],
             excludeColumns: ["role"],
-            allowedQueryParams: ["order", "order_by"],
+            allowedQueryParams: ["order", "order_by", "id"],
             dbConnectionString: "root:root@localhost:3306/api_maker"
         },
     },
@@ -102,9 +102,17 @@ app.get('/:endpoint', async (req, res) => {
         const order = queryParams['order'] || '';
 
         allowedParams.forEach(param => {
+            console.log("TCL: param", param)
             if (param !== 'order_by' && param !== 'order') {
                 // Handle other allowed query parameters for WHERE clause
-                whereConditions.push(`${param} = '${filteredQuery[param]}'`);
+                // Handle other allowed query parameters for WHERE clause
+                if (!isNaN(filteredQuery[param])) {
+                    // If the parameter value is a number, cast it to a number in the WHERE clause
+                    whereConditions.push(`${param} = ${Number(filteredQuery[param])}`);
+                } else {
+                    // If the parameter value is not a number, treat it as a string in the WHERE clause
+                    whereConditions.push(`${param} = '${filteredQuery[param]}'`);
+                }
             }
         });
 
