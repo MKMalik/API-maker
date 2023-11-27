@@ -16,7 +16,7 @@ const endpoints = {
             where: {},
             columns: ["*"],
             excludeColumns: ["role"],
-            allowedQueryParams: ["order", "order_by", "id", "name", "email"],
+            allowedQueryParams: ["id", "name", "email"],
             dbConnectionString: "root:root@localhost:3306/api_maker"
         },
     },
