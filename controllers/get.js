@@ -53,36 +53,54 @@ async function getController(req, res, next) {
         const search = queryParams['search'] || '';
         const searchBy = queryParams['search_by'] || '';
 
-        allowedParams.forEach(param => {
-            if (param !== 'order_by' && param !== 'order' && param !== 'search' && param !== 'search_by') {
-                // Handle other allowed query parameters for WHERE clause
-                if (!isNaN(filteredQuery[param])) {
-                    // If the parameter value is a number, cast it to a number in the WHERE clause
-                    whereConditions.push(`${param} = ${Number(filteredQuery[param])}`);
-                } else {
-                    // If the parameter value is not a number, treat it as a string in the WHERE clause
-                    whereConditions.push(`${param} = '${filteredQuery[param]}'`);
-                }
-            }
-        });
+        // Define an array to hold all conditions
+        const allConditions = [];
 
         // Implementing search functionality
         if (search && searchBy) {
-            if (allColumnsFromDB.includes(searchBy)) {
-                // If the 'search_by' field exists in the available columns
-                if (!isNaN(search)) {
-                    // If the search value is a number, use equality comparison
-                    whereConditions.push(`${searchBy} = ${Number(search)}`);
-                } else {
-                    // If the search value is a string, use a partial match comparison
-                    whereConditions.push(`${searchBy} LIKE '%${search}%'`);
+            const searchColumns = searchBy.split(',').map(searchParam => searchParam.trim());
+            const validSearchColumns = searchColumns.filter(col => allColumnsFromDB.includes(col));
+
+            if (validSearchColumns.length > 0) {
+                const searchConditions = validSearchColumns.map(col => {
+                    if (!isNaN(search)) {
+                        return `${col} = ${Number(search)}`;
+                    } else {
+                        return `${col} LIKE '%${search}%'`;
+                    }
+                });
+
+                // Push search conditions to the array
+                if (searchConditions.length > 0) {
+                    allConditions.push(`(${searchConditions.join(' OR ')})`);
                 }
             } else {
-                // Handle cases where 'search_by' field does not exist in the available columns
-                console.error(`Column ${searchBy} does not exist in the database.`);
+                console.error(`Invalid or non-existing columns in 'search_by' parameter.`);
             }
         }
 
+        // Adding other conditions based on queryParams
+        const otherConditions = allowedParams
+            .filter(param => param !== 'order_by' && param !== 'order' && param !== 'search' && param !== 'search_by')
+            .map(param => {
+                if (!isNaN(filteredQuery[param])) {
+                    return `${param} = ${Number(filteredQuery[param])}`;
+                } else {
+                    return `${param} = '${filteredQuery[param]}'`;
+                }
+            });
+
+        // Push other conditions to the array
+        if (otherConditions.length > 0) {
+            allConditions.push(`(${otherConditions.join(' AND ')})`);
+        }
+
+        // Constructing the final WHERE clause
+        if (allConditions.length > 0) {
+            sqlQuery += ` WHERE ${allConditions.join(' AND ')}`;
+        }
+
+        // Implementing sorting
         if (order && ['ASC', 'DESC'].includes(order.toUpperCase())) {
             // If 'order' is provided and valid (ASC or DESC)
             orderClause += ` ${order.toUpperCase()}`;
@@ -99,15 +117,11 @@ async function getController(req, res, next) {
             orderClause = `ORDER BY ${orderBy} ${order.toUpperCase()}`;
         }
 
-        if (whereConditions.length > 0) {
-            sqlQuery += ` WHERE ${whereConditions.join(' AND ')}`;
-        }
-        console.log("TCL: whereConditions", whereConditions)
-
         if (orderClause !== '') {
             sqlQuery += ` ${orderClause}`;
         }
 
+        console.log(`\n\n\nQuery: ${sqlQuery}\n\n\n`);
         connection.query(sqlQuery, function (error, results, fields) {
             if (error) {
                 if (error.sql) delete error.sql;
