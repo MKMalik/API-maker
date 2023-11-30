@@ -23,6 +23,7 @@ async function getController(req, res, next) {
         const requiredColumns = getRequiredColumns(endpoint.columns ?? ["*"], endpoint?.excludeColumns ?? [], allColumnsFromDB);
 
         let sqlQuery = `SELECT ${requiredColumns.join(', ')} FROM ${endpoint.tableName}`;
+        let countSqlQuery = `SELECT COUNT(*) FROM ${endpoint.tableName} `;
 
         const queryParams = req.query;
         const allowedParams = Object.keys(queryParams).filter(param => endpoint.allowedQueryParams.includes(param));
@@ -52,8 +53,21 @@ async function getController(req, res, next) {
         const order = queryParams['order'] || '';
         const search = queryParams['search'] || '';
         const searchBy = queryParams['search_by'] || '';
+        const limit = (endpoint.limit?.force ? endpoint.limit?.value : null) ?? (queryParams['limit'] || undefined);
+        const offset = queryParams['offset'] || 0;
 
-        // Define an array to hold all conditions
+        if (limit !== undefined && ((isNaN(parseInt(limit)) || !Number.isInteger(parseInt(limit))))) {
+            closeConnection(connection);
+            return res.status(500).json({ message: `Limit must be an integer. ${limit} is invalid integer` });
+        }
+
+        if (offset !== undefined && ((isNaN(parseInt(offset)) || !Number.isInteger(parseInt(offset))))) {
+            console.log("TCL: offset", offset)
+            closeConnection(connection);
+            return res.status(500).json({ message: `Offset must be an integer. ${offset} is invalid integer` });
+        }
+
+        // an array to hold all conditions
         const allConditions = [];
 
         // Implementing search functionality
@@ -75,7 +89,8 @@ async function getController(req, res, next) {
                     allConditions.push(`(${searchConditions.join(' OR ')})`);
                 }
             } else {
-                console.error(`Invalid or non-existing columns in 'search_by' parameter.`);
+                closeConnection(connection);
+                return res.status(400).json({ message: `Invalid or non-existing columns in 'search_by' parameter.` });
             }
         }
 
@@ -121,6 +136,21 @@ async function getController(req, res, next) {
             sqlQuery += ` ${orderClause}`;
         }
 
+        if (limit) {
+            countSqlQuery += sqlQuery;
+            countSqlQuery = countSqlQuery.replace(`SELECT ${requiredColumns.join(', ')} FROM ${endpoint.tableName}`, '');
+
+            sqlQuery += ` LIMIT ${limit} `;
+        }
+        if (offset) sqlQuery += `OFFSET ${offset} `;
+
+        let rowsCount = undefined;
+        await connection.query(countSqlQuery, function (error, results) {
+            if (error) console.error(error);
+            rowsCount = results;
+            console.log("TCL: results", results)
+        });
+
         console.log(`\n\n\nQuery: ${sqlQuery}\n\n\n`);
         connection.query(sqlQuery, function (error, results, fields) {
             if (error) {
@@ -128,13 +158,19 @@ async function getController(req, res, next) {
                 return res.status(500).json({ error, reason: error.sqlMessage ?? "Database query failed." });
             }
             console.log('The solution is: ', results);
-            res.json(results);
+            let response = { data: results };
+            if (limit) {
+                response.limit = parseInt(limit);
+                response.offset = parseInt(offset) ?? 0;
+                response.total_count = rowsCount[0]['COUNT(*)'];
+            }
+            res.json(response);
         });
 
         closeConnection(connection);
     } catch (error) {
         console.error('Error occurred:', error);
-        // if (error.sql) delete error.sql;
+        if (error.sql) delete error.sql;
         res.status(500).json({ message: 'Internal server error', log: error });
     }
 };

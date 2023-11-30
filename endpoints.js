@@ -17,6 +17,10 @@ const endpoints = {
             columns: ["*"],
             excludeColumns: ["role"],
             allowedQueryParams: ["id", "name", "email"],
+            limit: {
+                value: 5,
+                force: true,
+            },
             dbConnectionString: "root:root@localhost:3306/api_maker"
         },
     },
