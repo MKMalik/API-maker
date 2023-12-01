@@ -4,52 +4,87 @@ const { createConnection, closeConnection } = require("../utils/db.helpers");
 
 async function postController(req, res, next) {
     try {
-        console.log(req.url);
-
         const parsedUrl = url.parse(req.url, true);
-        const pathname = parsedUrl.pathname;
-        const endpoint = endpoints["POST"][pathname];
+        const endpoint = endpoints["POST"][parsedUrl.pathname];
+
         if (!endpoint || endpoint.method !== "POST") {
             return res.status(404).json({ message: "Endpoint not found" });
         }
 
         const dbConnectionString = endpoint.dbConnectionString;
-
         const connection = createConnection(dbConnectionString);
 
-        const postData = req.body; // data to be inserted is sent in the request body
+        const dataToInsert = req.body;
+        const defaultReferenceColumn = endpoint.defaultReferenceColumn;
 
-        const allowedColumns = endpoint.columnsToInsert;
+        connection.beginTransaction(async (beginTransactionErr) => {
+            if (beginTransactionErr) {
+                closeConnection(connection);
+                return res.status(500).json({ message: "Transaction begin failed" });
+            }
 
-        const insertData = {};
-        allowedColumns.forEach(column => {
-            if (postData.hasOwnProperty(column) && !endpoint.excludeColumns?.includes(column)) {
-                insertData[column] = postData[column];
+            try {
+                await performNestedInserts(connection, endpoint.nestedTables, dataToInsert, null, defaultReferenceColumn);
+
+                await connection.commit((commitErr) => {
+                    if (commitErr) {
+                        closeConnection(connection);
+                        return res.status(500).json({ message: "Transaction commit failed" });
+                    }
+                    res.status(200).json({ message: 'Data inserted successfully' });
+                });
+
+            } catch (error) {
+                console.error('Error occurred:', error);
+                closeConnection(connection);
+                return res.status(500).json({ message: error.message });
             }
         });
 
-        const missingColumns = endpoint.requiredColumns?.filter(column => !insertData.hasOwnProperty(column));
-        if (missingColumns?.length > 0) {
-            return res.status(400).json({ message: `Missing required fields in body: ${missingColumns.join(', ')}` });
-        }
-
-        const insertQuery = `INSERT INTO ${endpoint.tableName} SET ?`;
-
-        connection.query(insertQuery, insertData, function (error, results, fields) {
-            if (error) {
-                if (error.sql) delete error.sql;
-                return res.status(500).json({ error, reason: error.sqlMessage ?? "Database insertion failed. Check data format or database credentials." });
-            }
-            console.log('Inserted data:', results);
-            res.status(200).json({ message: 'Data inserted successfully', insertedData: insertData });
-        });
-
-        closeConnection(connection);
     } catch (error) {
         console.error('Error occurred:', error);
         if (error.sql) delete error.sql;
         res.status(500).json({ message: 'Internal server error', log: error });
     }
+}
+
+async function performNestedInserts(connection, tablesToInsert, dataToInsert, parentId, referenceColumn) {
+    for (const table of tablesToInsert) {
+        const { tableName, columnsToInsert, nestedTables, referenceColumn } = table;
+
+        const insertData = {};
+        columnsToInsert.forEach(column => {
+            if (dataToInsert[tableName]?.hasOwnProperty(column)) {
+                insertData[column] = dataToInsert[tableName][column];
+            }
+        });
+
+        if (parentId && referenceColumn) {
+            insertData[referenceColumn] = parentId;
+        }
+
+        const insertionResult = await insertIntoTable(connection, tableName, insertData);
+
+        if (nestedTables && nestedTables.length > 0) {
+            const lastInsertId = insertionResult.insertId;
+            await performNestedInserts(connection, nestedTables, dataToInsert, lastInsertId, referenceColumn);
+        }
+    }
+}
+
+async function insertIntoTable(connection, tableName, data) {
+    console.log("TCL: insertIntoTable -> tableName, data", tableName, data)
+    return new Promise((resolve, reject) => {
+        const query = `INSERT INTO ${tableName} SET ?`;
+
+        connection.query(query, data, (error, results) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(results);
+            }
+        });
+    });
 }
 
 module.exports = { postController };
