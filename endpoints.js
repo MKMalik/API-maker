@@ -14,6 +14,7 @@ const endpoints = {
             method: "GET",
             tableName: "user",
             where: {},
+            rules: [],
             columns: ["*"],
             excludeColumns: ["role"],
             allowedQueryParams: ["id", "name", "email"],
@@ -21,6 +22,7 @@ const endpoints = {
                 value: 5,
                 force: true,
             },
+            rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
             dbConnectionString: "root:root@localhost:3306/api_maker"
         },
     },
@@ -31,9 +33,9 @@ const endpoints = {
             dbConnectionString: "root:root@localhost:3306/api_maker",
             columnsToInsert: ["name", "role", "email"],
             excludeColumns: ["id", "created_at", "updated_at", "deleted_at"],
-            requiredColumns: ["name", "email",]
+            requiredColumns: ["name", "email",],
+            rules: ["decodedToken.role == 'admin'"],
         },
-
         "/nestedInsert": {
             "method": "POST",
             "dbConnectionString": "root:root@localhost:3306/api_maker",

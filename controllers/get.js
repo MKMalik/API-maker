@@ -1,19 +1,8 @@
-const { endpoints } = require("../endpoints");
 const { closeConnection, createConnection, fetchAllColumnsFromDatabase } = require("../utils/db.helpers");
 const { getRequiredColumns } = require("../utils/helpers");
-const url = require('url');
-
 async function getController(req, res, next) {
     try {
-        console.log(req.url);
-
-        const parsedUrl = url.parse(req.url, true);
-        const pathname = parsedUrl.pathname;
-        const endpoint = endpoints["GET"][pathname];
-        if (!endpoint || endpoint.method !== "GET") {
-            return res.status(404).json({ message: "Endpoint not found" });
-        }
-
+        const endpoint = req.endpoint;
 
         const dbConnectionString = endpoint.dbConnectionString;
         const connection = createConnection(dbConnectionString);
@@ -26,7 +15,7 @@ async function getController(req, res, next) {
         let countSqlQuery = `SELECT COUNT(*) FROM ${endpoint.tableName} `;
 
         const queryParams = req.query;
-        const allowedParams = Object.keys(queryParams).filter(param => endpoint.allowedQueryParams.includes(param));
+        const allowedParams = Object.keys(queryParams).filter(param => endpoint.allowedQueryParams?.includes(param));
         const filteredQuery = allowedParams.reduce((obj, key) => {
             obj[key] = queryParams[key];
             return obj;
@@ -53,7 +42,7 @@ async function getController(req, res, next) {
         const order = queryParams['order'] || '';
         const search = queryParams['search'] || '';
         const searchBy = queryParams['search_by'] || '';
-        const limit = (endpoint.limit?.force ? endpoint.limit?.value : null) ?? (queryParams['limit'] || undefined);
+        const limit = calculateLimit(endpoint.limit, queryParams['limit']);
         const offset = queryParams['offset'] || 0;
 
         if (limit !== undefined && ((isNaN(parseInt(limit)) || !Number.isInteger(parseInt(limit))))) {
@@ -62,7 +51,6 @@ async function getController(req, res, next) {
         }
 
         if (offset !== undefined && ((isNaN(parseInt(offset)) || !Number.isInteger(parseInt(offset))))) {
-            console.log("TCL: offset", offset)
             closeConnection(connection);
             return res.status(500).json({ message: `Offset must be an integer. ${offset} is invalid integer` });
         }
@@ -148,7 +136,6 @@ async function getController(req, res, next) {
         await connection.query(countSqlQuery, function (error, results) {
             if (error) console.error(error);
             rowsCount = results;
-            console.log("TCL: results", results)
         });
 
         console.log(`\n\n\nQuery: ${sqlQuery}\n\n\n`);
@@ -157,7 +144,6 @@ async function getController(req, res, next) {
                 if (error.sql) delete error.sql;
                 return res.status(500).json({ error, reason: error.sqlMessage ?? "Database query failed." });
             }
-            console.log('The solution is: ', results);
             let response = { data: results };
             if (limit) {
                 response.limit = parseInt(limit);
@@ -175,4 +161,14 @@ async function getController(req, res, next) {
     }
 };
 
+const calculateLimit = (endpointLimit, queryParamsLimit) => {
+    // Check if the 'force' flag is set in the endpoint's limit configuration
+    if (endpointLimit?.force) {
+        // Return either the configured value or the value from query parameters
+        return endpointLimit.value ?? queryParamsLimit;
+    } else {
+        // Return the value from query parameters or the default limit value from the endpoint
+        return queryParamsLimit || endpointLimit?.value || undefined;
+    }
+};
 module.exports = { getController };

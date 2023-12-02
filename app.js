@@ -5,6 +5,8 @@ const app = express();
 const { getController } = require('./controllers/get');
 const { postController } = require('./controllers/post');
 const { createTableController } = require('./controllers/table');
+const { verifyTokenWithRules } = require('./middlewares/verifyTokenWithRules');
+const { getEndpoint } = require('./middlewares/getEndpoint');
 
 app.use(express.json())
 app.get('/', (req, res) => {
@@ -13,8 +15,8 @@ app.get('/', (req, res) => {
 
 app.post('/create-table', createTableController);
 
-app.get('/:endpoint', getController);
-app.post('/:endpoint', postController);
+app.get('/:endpoint', getEndpoint, verifyTokenWithRules, getController);
+app.post('/:endpoint', getEndpoint, verifyTokenWithRules, postController);
 
 app.listen(5500, () => {
     console.log("listening on port...");

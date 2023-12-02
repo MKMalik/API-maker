@@ -7,10 +7,6 @@ async function postController(req, res, next) {
         const parsedUrl = url.parse(req.url, true);
         const endpoint = endpoints["POST"][parsedUrl.pathname];
 
-        if (!endpoint || endpoint.method !== "POST") {
-            return res.status(404).json({ message: "Endpoint not found" });
-        }
-
         const dbConnectionString = endpoint.dbConnectionString;
         const connection = createConnection(dbConnectionString);
 
