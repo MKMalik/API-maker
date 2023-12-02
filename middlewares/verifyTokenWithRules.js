@@ -18,7 +18,7 @@ const verifyTokenWithRules = async (req, res, next) => {
 
         // Then use the async function to verify the token
         try {
-            const decodedToken = await verifyToken(jwtToken);
+            const decodedToken = await verifyToken(jwtToken, endpoint.jwtSecret);
 
             // Perform dynamic rule-based checks
             const validationResults = evaluateTokenRules(decodedToken, req, endpoint?.rules);
@@ -61,9 +61,9 @@ const evaluateTokenRules = (decodedToken, req, rules) => {
     return failedRules.length === 0 ? true : failedRules; // Return either true or the list of failed rules
 };
 
-async function verifyToken(jwtToken) {
+async function verifyToken(jwtToken, jwtSecret) {
     return new Promise((resolve, reject) => {
-        jwt.verify(jwtToken, "THisISSuperSecretKeyTableTop)*&2327", (err, decodedToken) => {
+        jwt.verify(jwtToken, jwtSecret, (err, decodedToken) => {
             if (err) {
                 // console.error('JWT verification error:', err);
                 reject(err);

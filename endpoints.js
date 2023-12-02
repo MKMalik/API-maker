@@ -23,7 +23,8 @@ const endpoints = {
                 force: true,
             },
             rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
-            dbConnectionString: "root:root@localhost:3306/api_maker"
+            dbConnectionString: "root:root@localhost:3306/api_maker",
+            jwtSecret: "THisISSuperSecretKeyTableTop)*&2327", // encrypted
         },
     },
     "POST": {
@@ -39,6 +40,8 @@ const endpoints = {
         "/nestedInsert": {
             "method": "POST",
             "dbConnectionString": "root:root@localhost:3306/api_maker",
+            "rules": ["decodedToken.id !== null"],
+            "jwtSecret": "THisISSuperSecretKeyTableTop)*&2327", // encrypted
             "defaultReferenceColumn": "user_id",
             "nestedTables": [
                 {
