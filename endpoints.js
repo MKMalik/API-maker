@@ -8,19 +8,29 @@ const endpoints = {
             excludeColumns: ["password", "fcm_token", "deleted_at"],
             where: { "user_role_id": 1 },
             allowedQueryParams: [],
+            // rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
             dbConnectionString: "root:root@localhost:3306/tabletop"
         },
-        "/user": {
+
+        "/users-mongo": {
             method: "GET",
+            tableName: "sample_blog",
+            columns: ["_id", "title", "slug",],
+            where: { "_id": '65724ee1d9d2ffd66bd5aaf7' },
+            allowedQueryParams: [],
+            // rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
+            dbConnectionString: "mongodb://localhost:27017/sample_blog"
+        },
+
+        "/user": {
             tableName: "user",
             where: {},
-            rules: [],
             columns: ["*"],
             excludeColumns: ["role"],
             allowedQueryParams: ["id", "name", "email"],
             limit: {
                 value: 5,
-                force: true,
+                force: false,
             },
             rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
             dbConnectionString: "root:root@localhost:3306/api_maker",
@@ -46,7 +56,7 @@ const endpoints = {
             "nestedTables": [
                 {
                     "tableName": "user",
-                    "columnsToInsert": ["name", "email"],
+                    "columnsToInsert": ["name", "email", "role"],
                     // Add other configurations if needed for the "user" table
                     "nestedTables": [
                         {

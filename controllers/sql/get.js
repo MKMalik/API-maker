@@ -1,5 +1,5 @@
-const { closeConnection, createConnection, fetchAllColumnsFromDatabase } = require("../utils/db.helpers");
-const { getRequiredColumns } = require("../utils/helpers");
+const { closeConnection, createConnection, fetchAllColumnsFromDatabase } = require("../../utils/db.helpers");
+const { getRequiredColumns } = require("../../utils/helpers");
 async function getController(req, res, next) {
     try {
         const endpoint = req.endpoint;

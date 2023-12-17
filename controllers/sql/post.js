@@ -1,6 +1,6 @@
-const { endpoints } = require("../endpoints");
+const { endpoints } = require("../../endpoints");
 const url = require('url');
-const { createConnection, closeConnection } = require("../utils/db.helpers");
+const { createConnection, closeConnection } = require("../../utils/db.helpers");
 
 async function postController(req, res, next) {
     try {
