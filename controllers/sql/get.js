@@ -206,8 +206,8 @@ function handleSelectForIncludes(includes, includeSelectQuery = '', isFirstLevel
 
         includeSelectQuery += `))  AS ${include.tableName} `;
         if (!isFirstLevel) {
-            includeSelectQuery += `FROM ${include.tableName} WHERE ${include.relationship.parentColumn} = ${include.relationship.childColumn}`;
-
+            includeSelectQuery += `FROM ${include.tableName} WHERE ${include.relationship.parentColumn} = ${include.relationship.childColumn}
+            GROUP BY ${include.relationship.childColumn} `;
         }
         includeSelectQuery += ') '
         if (isFirstLevel) includeSelectQuery += ` AS ${include.tableName} `
@@ -221,16 +221,6 @@ function handleIncludes(includes) {
     includes.forEach(include => {
         // Construct JOIN queries for each included table
         includeQuery += ` LEFT JOIN ${include.tableName} ON ${include.relationship.parentColumn} = ${include.relationship.childColumn}`;
-
-        // Construct SELECT queries for included columns
-        // if (include.columns && include.columns.length > 0) {
-        //     includeQuery += `, ${include.columns.join(', ')}`;
-        // }
-
-        // Recursively handle nested includes
-        if (include.includes && include.includes.length > 0) {
-            includeQuery += handleIncludes(include.includes, includeQuery);
-        }
     });
 
     return includeQuery;
