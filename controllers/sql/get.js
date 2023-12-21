@@ -1,5 +1,5 @@
 const { closeConnection, createConnection, fetchAllColumnsFromDatabase } = require("../../utils/db.helpers");
-const { getRequiredColumns } = require("../../utils/helpers");
+const { getRequiredColumns, parseNestedJSON, parseNestedJSONandRemoveNulls } = require("../../utils/helpers");
 async function getController(req, res, next) {
     try {
         const endpoint = req.endpoint;
@@ -11,8 +11,18 @@ async function getController(req, res, next) {
 
         const requiredColumns = getRequiredColumns(endpoint.columns ?? ["*"], endpoint?.excludeColumns ?? [], allColumnsFromDB);
 
-        let sqlQuery = `SELECT ${requiredColumns.join(', ')} FROM ${endpoint.tableName}`;
-        let countSqlQuery = `SELECT COUNT(*) FROM ${endpoint.tableName} `;
+        let sqlQuery = `SELECT ${requiredColumns.join(', ')} `;
+        // let sqlQuery = ``;
+        let countSqlQuery = `SELECT COUNT(*) FROM `;
+
+        // handle SELECT for includes tables
+        sqlQuery += handleSelectForIncludes(endpoint.includes, '', true);
+
+        sqlQuery += ` FROM ${endpoint.tableName} `
+
+        if (endpoint.includes && endpoint.includes.length > 0) {
+            sqlQuery += handleIncludes(endpoint.includes, sqlQuery);
+        }
 
         const queryParams = req.query;
         const allowedParams = Object.keys(queryParams).filter(param => endpoint.allowedQueryParams?.includes(param));
@@ -124,6 +134,15 @@ async function getController(req, res, next) {
             sqlQuery += ` ${orderClause}`;
         }
 
+        /// adding groupby to use JSON_ARRAYAGG
+        // if (endpoint.includes) {
+        //     sqlQuery += ' GROUP BY ';
+        //     requiredColumns.map((col, index) => {
+        //         sqlQuery += ` ${index !== 0 ? ', ' : ''} ${col} `;
+        //     });
+        // }
+
+        sqlQuery += ` GROUP BY ${endpoint.tableName}.id `;
         if (limit) {
             countSqlQuery += sqlQuery;
             countSqlQuery = countSqlQuery.replace(`SELECT ${requiredColumns.join(', ')} FROM ${endpoint.tableName}`, '');
@@ -133,10 +152,10 @@ async function getController(req, res, next) {
         if (offset) sqlQuery += `OFFSET ${offset} `;
 
         let rowsCount = undefined;
-        await connection.query(countSqlQuery, function (error, results) {
-            if (error) console.error(error);
-            rowsCount = results;
-        });
+        // await connection.query(countSqlQuery, function (error, results) {
+        //     if (error) console.error(error);
+        //     rowsCount = results;
+        // });
 
         console.log(`\n\n\nQuery: ${sqlQuery}\n\n\n`);
         connection.query(sqlQuery, function (error, results, fields) {
@@ -148,9 +167,9 @@ async function getController(req, res, next) {
             if (limit) {
                 response.limit = parseInt(limit);
                 response.offset = parseInt(offset) ?? 0;
-                response.total_count = rowsCount[0]['COUNT(*)'];
+                // response.total_count = rowsCount[0]['COUNT(*)'];
             }
-            res.json(response);
+            res.json(parseNestedJSON(response));
         });
 
         closeConnection(connection);
@@ -160,6 +179,59 @@ async function getController(req, res, next) {
         res.status(500).json({ message: 'Internal server error', log: error });
     }
 };
+
+function handleSelectForIncludes(includes, includeSelectQuery = '', isFirstLevel) {
+    console.log("TCL: handleSelectForIncludes -> includes.tableName", includes.length)
+    if (includes.length) {
+
+    }
+    includes.map((include) => {
+        if (!isFirstLevel) {
+            includeSelectQuery += `, '${include.tableName}', `
+        }
+        else includeSelectQuery += ', ';
+        includeSelectQuery += ` (SELECT JSON_ARRAYAGG(`;
+        includeSelectQuery += `JSON_OBJECT(`;
+        include.columns.forEach((column, index) => {
+            if (index !== 0) includeSelectQuery += ', ';
+            includeSelectQuery += `'${column.split('.')[1]}', ${column} `;
+
+            if (include.includes) {
+                includeSelectQuery += handleSelectForIncludes(include.includes);
+            }
+        })
+
+        includeSelectQuery += `))  AS ${include.tableName} `;
+        if (!isFirstLevel) {
+            includeSelectQuery += `FROM ${include.tableName} WHERE ${include.relationship.parentColumn} = ${include.relationship.childColumn}`;
+
+        }
+        includeSelectQuery += ') '
+        if (isFirstLevel) includeSelectQuery += ` AS ${include.tableName} `
+    });
+
+    return includeSelectQuery;
+}
+
+function handleIncludes(includes) {
+    let includeQuery = '';
+    includes.forEach(include => {
+        // Construct JOIN queries for each included table
+        includeQuery += ` LEFT JOIN ${include.tableName} ON ${include.relationship.parentColumn} = ${include.relationship.childColumn}`;
+
+        // Construct SELECT queries for included columns
+        // if (include.columns && include.columns.length > 0) {
+        //     includeQuery += `, ${include.columns.join(', ')}`;
+        // }
+
+        // Recursively handle nested includes
+        if (include.includes && include.includes.length > 0) {
+            includeQuery += handleIncludes(include.includes, includeQuery);
+        }
+    });
+
+    return includeQuery;
+}
 
 const calculateLimit = (endpointLimit, queryParamsLimit) => {
     // Check if the 'force' flag is set in the endpoint's limit configuration

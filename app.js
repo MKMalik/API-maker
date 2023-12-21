@@ -16,7 +16,8 @@ app.get('/', (req, res) => {
 
 app.post('/create-table', createTableController);
 
-app.get('/:endpoint', getEndpoint, verifyTokenWithRules, mongodbGetController);
+app.get('/:endpoint', getEndpoint, verifyTokenWithRules, getController);
+// app.get('/:endpoint', getEndpoint, verifyTokenWithRules, mongodbGetController);
 app.post('/:endpoint', getEndpoint, verifyTokenWithRules, postController);
 
 app.listen(5500, () => {

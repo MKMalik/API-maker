@@ -8,7 +8,7 @@ const endpoints = {
             excludeColumns: ["password", "fcm_token", "deleted_at"],
             where: { "user_role_id": 1 },
             allowedQueryParams: [],
-            // rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
+            rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
             dbConnectionString: "root:root@localhost:3306/tabletop"
         },
 
@@ -23,19 +23,81 @@ const endpoints = {
         },
 
         "/user": {
-            tableName: "user",
-            where: {},
-            columns: ["*"],
-            excludeColumns: ["role"],
-            allowedQueryParams: ["id", "name", "email"],
-            limit: {
-                value: 5,
-                force: false,
+            "method": "GET",
+            "tableName": "user",
+            "where": {},
+            "columns": ["user.name", "user.email",],
+            "excludeColumns": ["role"],
+            "allowedQueryParams": ["id", "name", "email"],
+            "limit": {
+                "value": 5,
+                "force": false
             },
-            rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
-            dbConnectionString: "root:root@localhost:3306/api_maker",
-            jwtSecret: "THisISSuperSecretKeyTableTop)*&2327", // encrypted
-        },
+            "includes": [
+                {
+                    "tableName": "address",
+                    "where": {},
+                    "columns": [
+                        "address.id",
+                        "address.address_line"
+                    ],
+                    "excludeColumns": ["deletedAt"],
+                    "relationship": {
+                        "parentColumn": "user.id",
+                        "childColumn": "address.user_id"
+                    },
+                    "includes": [
+                        {
+                            "tableName": "city",
+                            "where": {},
+                            "columns": ["city.id", "city.city_name", "city.address_id"],
+                            "excludeColumns": ["deletedAt"],
+                            "relationship": {
+                                "parentColumn": "address.id",
+                                "childColumn": "city.address_id"
+                            },
+                            
+                        }
+                        // {
+                        //     "tableName": "order_details",
+                        //     "where": {},
+                        //     "columns": ["*"],
+                        //     "excludeColumns": ["deletedAt"],
+                        //     "relationship": {
+                        //         "parentColumn": "order_id",     // Specify the column in the "order" table that links to "order_details"
+                        //         "childColumn": "order_id"      // Specify the column in the "order_details" table linked to "order"
+                        //     },
+                        //     "limit": {
+                        //         "value": 5,
+                        //         "force": false
+                        //     }
+                        // },
+                        // {
+                        //     "tableName": "address",
+                        //     "where": {},
+                        //     "columns": ["id", "name", "street", "city", "state", "zip", "country"],
+                        //     "excludeColumns": ["deletedAt", "createdAt", "updatedAt"],
+                        //     "relationship": {
+                        //         "parentColumn": "user_id",    // Specify the column in the "user" table that links to "address"
+                        //         "childColumn": "user_id"      // Specify the column in the "address" table linked to the "user"
+                        //     },
+                        //     "limit": {
+                        //         "value": 5,
+                        //         "force": false
+                        //     }
+                        // }
+                    ],
+                    "limit": {
+                        "value": 50,
+                        "force": false
+                    }
+                }
+            ],
+            // "rules": ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
+            "dbConnectionString": "root:root@localhost:3306/api_maker",
+            "jwtSecret": "THisISSuperSecretKeyTableTop)*&2327"
+        }
+
     },
     "POST": {
         "/user": {
