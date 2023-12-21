@@ -13,7 +13,7 @@ async function getController(req, res, next) {
 
         let sqlQuery = `SELECT ${requiredColumns.join(', ')} `;
         // let sqlQuery = ``;
-        let countSqlQuery = `SELECT COUNT(*) FROM `;
+        let countSqlQuery = `SELECT COUNT(*) FROM ${endpoint.tableName} `;
 
         // handle SELECT for includes tables
         sqlQuery += handleSelectForIncludes(endpoint.includes, '', true);
@@ -111,7 +111,12 @@ async function getController(req, res, next) {
         // Constructing the final WHERE clause
         if (allConditions.length > 0) {
             sqlQuery += ` WHERE ${allConditions.join(' AND ')}`;
+
+            // for top level count query
+            countSqlQuery += ` WHERE ${allConditions.join(' AND ')} `;
         }
+
+        sqlQuery += ` GROUP BY ${endpoint.tableName}.id `;
 
         // Implementing sorting
         if (order && ['ASC', 'DESC'].includes(order.toUpperCase())) {
@@ -142,21 +147,22 @@ async function getController(req, res, next) {
         //     });
         // }
 
-        sqlQuery += ` GROUP BY ${endpoint.tableName}.id `;
         if (limit) {
-            countSqlQuery += sqlQuery;
-            countSqlQuery = countSqlQuery.replace(`SELECT ${requiredColumns.join(', ')} FROM ${endpoint.tableName}`, '');
+            // countSqlQuery += sqlQuery;
+            // countSqlQuery = countSqlQuery.replace(`SELECT ${requiredColumns.join(', ')} FROM ${endpoint.tableName}`, '');
 
             sqlQuery += ` LIMIT ${limit} `;
         }
         if (offset) sqlQuery += `OFFSET ${offset} `;
 
         let rowsCount = undefined;
-        // await connection.query(countSqlQuery, function (error, results) {
-        //     if (error) console.error(error);
-        //     rowsCount = results;
-        // });
 
+        await connection.query(countSqlQuery, function (error, results) {
+            if (error) console.error(error);
+            rowsCount = results;
+        });
+
+        console.log("TCL: rowsCount", rowsCount)
         console.log(`\n\n\nQuery: ${sqlQuery}\n\n\n`);
         connection.query(sqlQuery, function (error, results, fields) {
             if (error) {
@@ -167,7 +173,7 @@ async function getController(req, res, next) {
             if (limit) {
                 response.limit = parseInt(limit);
                 response.offset = parseInt(offset) ?? 0;
-                // response.total_count = rowsCount[0]['COUNT(*)'];
+                response.total_count = rowsCount[0]['COUNT(*)'];
             }
             res.json(parseNestedJSON(response));
         });
@@ -182,9 +188,6 @@ async function getController(req, res, next) {
 
 function handleSelectForIncludes(includes, includeSelectQuery = '', isFirstLevel) {
     console.log("TCL: handleSelectForIncludes -> includes.tableName", includes.length)
-    if (includes.length) {
-
-    }
     includes.map((include) => {
         if (!isFirstLevel) {
             includeSelectQuery += `, '${include.tableName}', `
