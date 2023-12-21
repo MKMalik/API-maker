@@ -26,9 +26,9 @@ const endpoints = {
             "method": "GET",
             "tableName": "user",
             "where": {},
-            "columns": ["user.name", "user.email",],
+            "columns": ["*", "id", "name", "email"],
             "excludeColumns": ["role"],
-            "allowedQueryParams": ["id", "name", "email"],
+            "allowedQueryParams": ["id", "name", "email"], // TODO: make it mappable i.e., {"id": "user.id", "cityId": 'city.id',}
             "limit": {
                 "value": 5,
                 "force": false
@@ -38,10 +38,10 @@ const endpoints = {
                     "tableName": "address",
                     "where": {},
                     "columns": [
-                        "address.id",
-                        "address.address_line"
+                        "id",
+                        "address_line"
                     ],
-                    "excludeColumns": ["deletedAt"],
+                    "excludeColumns": ["address_line"],
                     "relationship": {
                         "parentColumn": "user.id",
                         "childColumn": "address.user_id"
@@ -50,13 +50,17 @@ const endpoints = {
                         {
                             "tableName": "city",
                             "where": {},
-                            "columns": ["city.id", "city.city_name", "city.address_id"],
+                            "columns": [
+                                "id",
+                                "city_name",
+                                // "city.address_id"
+                            ],
                             "excludeColumns": ["deletedAt"],
                             "relationship": {
                                 "parentColumn": "address.id",
                                 "childColumn": "city.address_id"
                             },
-                            
+
                         }
                         // {
                         //     "tableName": "order_details",

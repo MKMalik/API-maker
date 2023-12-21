@@ -9,7 +9,7 @@ async function getController(req, res, next) {
 
         const allColumnsFromDB = await fetchAllColumnsFromDatabase(endpoint.tableName, connection);
 
-        const requiredColumns = getRequiredColumns(endpoint.columns ?? ["*"], endpoint?.excludeColumns ?? [], allColumnsFromDB);
+        const requiredColumns = getRequiredColumns(endpoint.columns ?? ["*"], endpoint?.excludeColumns ?? [], allColumnsFromDB, endpoint.tableName);
 
         let sqlQuery = `SELECT ${requiredColumns.join(', ')} `;
         // let sqlQuery = ``;
@@ -195,7 +195,7 @@ function handleSelectForIncludes(includes, includeSelectQuery = '', isFirstLevel
         else includeSelectQuery += ', ';
         includeSelectQuery += ` (SELECT JSON_ARRAYAGG(`;
         includeSelectQuery += `JSON_OBJECT(`;
-        include.columns.forEach((column, index) => {
+        getRequiredColumns(include.columns, include?.excludeColumns, [...include.columns, ...include?.excludeColumns ?? []], include.tableName).forEach((column, index) => {
             if (index !== 0) includeSelectQuery += ', ';
             includeSelectQuery += `'${column.split('.')[1]}', ${column} `;
 

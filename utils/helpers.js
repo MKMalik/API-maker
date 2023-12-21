@@ -1,17 +1,18 @@
 
 // Function to filter out excluded columns from the fetched columns
-function getRequiredColumns(columns, excludeColumns = [], allColumns) {
+function getRequiredColumns(columns, excludeColumns = [], allColumns, tableName) {
     let requiredColumns = [];
 
     if (columns.includes("*")) {
-        requiredColumns = allColumns?.filter(col => !excludeColumns?.includes(col));
+        requiredColumns = allColumns?.filter(col => !excludeColumns?.includes(col)).map(col => `${tableName}.${col}`);
     } else {
-        requiredColumns = columns.filter(col => !excludeColumns?.includes(col));
+        requiredColumns = columns.filter(col => !excludeColumns?.includes(col)).map(col => `${tableName}.${col}`);
     }
 
     console.log("TCL: getRequiredColumns -> requiredColumns", requiredColumns)
     return requiredColumns;
 }
+
 
 function parseNestedJSON(obj) {
     for (const key in obj) {
