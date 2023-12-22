@@ -21,7 +21,7 @@ async function getController(req, res, next) {
         sqlQuery += ` FROM ${endpoint.tableName} `
 
         if (endpoint.includes && endpoint.includes.length > 0) {
-            sqlQuery += handleIncludes(endpoint.includes, sqlQuery);
+            sqlQuery += handleIncludesJoin(endpoint.includes, sqlQuery);
         }
 
         const queryParams = req.query;
@@ -195,14 +195,18 @@ function handleSelectForIncludes(includes, includeSelectQuery = '', isFirstLevel
         else includeSelectQuery += ', ';
         includeSelectQuery += ` (SELECT JSON_ARRAYAGG(`;
         includeSelectQuery += `JSON_OBJECT(`;
-        getRequiredColumns(include.columns, include?.excludeColumns, [...include.columns, ...include?.excludeColumns ?? []], include.tableName).forEach((column, index) => {
+        getRequiredColumns(
+            include.columns, include?.excludeColumns,
+            [...include.columns, ...include?.excludeColumns ?? []],
+            include.tableName
+        ).forEach((column, index) => {
             if (index !== 0) includeSelectQuery += ', ';
             includeSelectQuery += `'${column.split('.')[1]}', ${column} `;
-
-            if (include.includes) {
-                includeSelectQuery += handleSelectForIncludes(include.includes);
-            }
         })
+
+        if (include.includes) {
+            includeSelectQuery += handleSelectForIncludes(include.includes, '', false);
+        }
 
         includeSelectQuery += `))  AS ${include.tableName} `;
         if (!isFirstLevel) {
@@ -216,7 +220,7 @@ function handleSelectForIncludes(includes, includeSelectQuery = '', isFirstLevel
     return includeSelectQuery;
 }
 
-function handleIncludes(includes) {
+function handleIncludesJoin(includes) {
     let includeQuery = '';
     includes.forEach(include => {
         // Construct JOIN queries for each included table
