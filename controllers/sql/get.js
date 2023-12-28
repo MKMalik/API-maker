@@ -21,7 +21,11 @@ async function getController(req, res, next) {
         sqlQuery += ` FROM ${endpoint.tableName} `
 
         if (endpoint.includes && endpoint.includes.length > 0) {
-            sqlQuery += handleIncludesJoin(endpoint.includes, sqlQuery);
+            let includeJoins = handleIncludesJoin(endpoint.includes, sqlQuery);
+
+            sqlQuery += includeJoins;
+
+            countSqlQuery += includeJoins;
         }
 
         const queryParams = req.query;
