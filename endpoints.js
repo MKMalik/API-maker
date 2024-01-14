@@ -166,25 +166,12 @@ const endpoints = {
         // Add more PATCH endpoints if needed
     },
 
-    "PUT": {
-        "/user": {
-            "method": "PUT",
-            "tableName": "user",
-            "dbConnectionString": "root:root@localhost:3306/api_maker",
-            "columnsToUpdate": ["name", "email", "role"],
-            "excludeColumns": ["created_at", "updated_at", "deleted_at"],
-            "where": { "id": "req.params.userId" },
-            "rules": ["decodedToken.role == 'admin'"],
-        },
-        // Add more PUT endpoints if needed
-    },
-
     "DELETE": {
         "/user": {
             "method": "DELETE",
             "tableName": "user",
             "dbConnectionString": "root:root@localhost:3306/api_maker",
-            "where": { "id": "req.params.userId" },
+            "where": { "name": "req.body.name" },
             "rules": ["decodedToken.role == 'admin'"],
         },
         // Add more DELETE endpoints if needed
