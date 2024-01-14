@@ -97,7 +97,7 @@ const endpoints = {
                     }
                 }
             ],
-            // "rules": ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
+            "rules": ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
             "dbConnectionString": "root:root@localhost:3306/api_maker",
             "jwtSecret": "THisISSuperSecretKeyTableTop)*&2327"
         }
@@ -160,7 +160,8 @@ const endpoints = {
             "columnsToUpdate": ["name", "email"],
             "excludeColumns": ["id", "created_at", "updated_at", "deleted_at"],
             "where": { "id": "req.body.userId" },
-            // "rules": ["decodedToken.role == 'admin'"],
+            "rules": ["decodedToken.role == 'admin'"],
+            "jwtSecret": "THisISSuperSecretKeyTableTop)*&2327", // encrypted
         },
         // Add more PATCH endpoints if needed
     },

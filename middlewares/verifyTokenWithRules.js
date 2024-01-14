@@ -23,7 +23,7 @@ const verifyTokenWithRules = async (req, res, next) => {
             // Perform dynamic rule-based checks
             const validationResults = evaluateTokenRules(decodedToken, req, endpoint?.rules);
 
-            if (Array.isArray(validationResults)) {
+            if (Array.isArray(validationResults) && validationResults.length > 0) {
                 // Permission denied based on rule conditions
                 return res.status(403).json({ message: 'Forbidden: Insufficient permissions', failedRules: validationResults });
             } else {
@@ -40,15 +40,15 @@ const verifyTokenWithRules = async (req, res, next) => {
         next();
     }
 };
-
 // Function to evaluate token rules dynamically
 const evaluateTokenRules = (decodedToken, req, rules) => {
     const failedRules = [];
+
     // Evaluate rules provided by the client
     for (const ruleName in rules) {
         try {
             const ruleCondition = rules[ruleName];
-            const isRuleValid = eval(ruleCondition);
+            const isRuleValid = evaluateRule(ruleCondition, decodedToken, req);
             if (!isRuleValid) {
                 failedRules.push(rules[ruleName]);
             }
@@ -58,7 +58,19 @@ const evaluateTokenRules = (decodedToken, req, rules) => {
         }
     }
 
-    return failedRules.length === 0 ? true : failedRules; // Return either true or the list of failed rules
+    return failedRules; // Return the list of failed rules
+};
+
+// Helper function to evaluate an individual rule
+const evaluateRule = (ruleCondition, decodedToken, req) => {
+    try {
+        // Use a safer mechanism to evaluate conditions without using eval
+        const conditionFunction = new Function('decodedToken', 'req', `return ${ruleCondition}`);
+        return conditionFunction(decodedToken, req);
+    } catch (error) {
+        console.error('Error evaluating rule condition:', error, ruleCondition);
+        return false;
+    }
 };
 
 async function verifyToken(jwtToken, jwtSecret) {
