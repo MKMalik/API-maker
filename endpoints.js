@@ -169,6 +169,7 @@ const endpoints = {
     "DELETE": {
         "/user": {
             "method": "DELETE",
+            "softDelete": true,
             "tableName": "user",
             "dbConnectionString": "root:root@localhost:3306/api_maker",
             "where": { "name": "req.body.name" },

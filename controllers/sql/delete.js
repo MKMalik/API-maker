@@ -17,7 +17,7 @@ async function deleteController(req, res, next) {
 
             try {
                 // Perform the delete operation
-                const rowsDeleted = await deleteFromTable(connection, endpoint.tableName, whereClause, req);
+                const rowsDeleted = await deleteFromTable(connection, endpoint.tableName, whereClause, req, endpoint.softDelete);
 
                 if (rowsDeleted === 0) {
                     return res.status(404).json({ message: "Data not found to delete" });
@@ -45,7 +45,7 @@ async function deleteController(req, res, next) {
         res.status(500).json({ message: 'Internal server error', log: error });
     }
 }
-async function deleteFromTable(connection, tableName, whereClause, req) {
+async function deleteFromTable(connection, tableName, whereClause, req, softDelete = true) {
     return new Promise((resolve, reject) => {
         const whereConditions = Object.keys(whereClause).map(key => `${key} = ?`).join(' AND ');
         const whereValues = Object.values(whereClause).map(key => {
@@ -70,17 +70,33 @@ async function deleteFromTable(connection, tableName, whereClause, req) {
             }
         });
 
-        const query = `DELETE FROM ?? WHERE ${whereConditions}`;
-        const values = [tableName, ...whereValues];
+        if (softDelete) {
+            // If soft delete is enabled, update the 'deletedAt' column with the current timestamp
+            const softDeleteQuery = `UPDATE ?? SET deletedAt = NOW() WHERE ${whereConditions}`;
+            const softDeleteValues = [tableName, ...whereValues];
 
-        connection.query(query, values, (error, results) => {
-            if (error) {
-                reject(error);
-            } else {
-                // Assuming you want to pass the number of affected rows back
-                resolve(results.affectedRows);
-            }
-        });
+            connection.query(softDeleteQuery, softDeleteValues, (softDeleteError, softDeleteResults) => {
+                if (softDeleteError) {
+                    reject(softDeleteError);
+                } else {
+                    // Assuming you want to pass the number of affected rows back
+                    resolve(softDeleteResults.affectedRows);
+                }
+            });
+        } else {
+            // Perform a regular delete if soft delete is not enabled
+            const deleteQuery = `DELETE FROM ?? WHERE ${whereConditions}`;
+            const deleteValues = [tableName, ...whereValues];
+
+            connection.query(deleteQuery, deleteValues, (deleteError, deleteResults) => {
+                if (deleteError) {
+                    reject(deleteError);
+                } else {
+                    // Assuming you want to pass the number of affected rows back
+                    resolve(deleteResults.affectedRows);
+                }
+            });
+        }
     });
 }
 
