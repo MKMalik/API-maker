@@ -41,7 +41,7 @@ const endpoints = {
                         "id",
                         "address_line"
                     ],
-                    "excludeColumns": ["address_line"],
+                    // "excludeColumns": ["address_line"],
                     "relationship": {
                         "parentColumn": "user.id",
                         "childColumn": "address.user_id"
@@ -53,7 +53,7 @@ const endpoints = {
                             "columns": [
                                 "id",
                                 "city_name",
-                                // "city.address_id"
+                                "address_id"
                             ],
                             "excludeColumns": ["deletedAt"],
                             "relationship": {
@@ -151,6 +151,44 @@ const endpoints = {
             ]
         }
     },
+
+    "PATCH": {
+        "/user": {
+            "method": "PATCH",
+            "tableName": "user",
+            "dbConnectionString": "root:root@localhost:3306/api_maker",
+            "columnsToUpdate": ["name", "email"],
+            "excludeColumns": ["id", "created_at", "updated_at", "deleted_at"],
+            "where": { "id": "req.body.userId" },
+            // "rules": ["decodedToken.role == 'admin'"],
+        },
+        // Add more PATCH endpoints if needed
+    },
+
+    "PUT": {
+        "/user": {
+            "method": "PUT",
+            "tableName": "user",
+            "dbConnectionString": "root:root@localhost:3306/api_maker",
+            "columnsToUpdate": ["name", "email", "role"],
+            "excludeColumns": ["created_at", "updated_at", "deleted_at"],
+            "where": { "id": "req.params.userId" },
+            "rules": ["decodedToken.role == 'admin'"],
+        },
+        // Add more PUT endpoints if needed
+    },
+
+    "DELETE": {
+        "/user": {
+            "method": "DELETE",
+            "tableName": "user",
+            "dbConnectionString": "root:root@localhost:3306/api_maker",
+            "where": { "id": "req.params.userId" },
+            "rules": ["decodedToken.role == 'admin'"],
+        },
+        // Add more DELETE endpoints if needed
+    },
+
 }
 
 module.exports = {
