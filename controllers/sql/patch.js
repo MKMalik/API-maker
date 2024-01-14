@@ -37,7 +37,8 @@ async function patchController(req, res, next) {
                         closeConnection(connection);
                         return res.status(500).json({ message: "Transaction commit failed" });
                     }
-                    res.status(200).json({ message: 'Data updated successfully' });
+                    if (affectedRows !== 0) res.status(200).json({ message: 'Data updated successfully' });
+                    else res.status(404).json({ message: 'Data does not exists' });
                 });
 
             } catch (error) {
