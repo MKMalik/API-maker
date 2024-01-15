@@ -11,6 +11,7 @@ const { mongodbGetController } = require('./controllers/mongodb/get');
 const cors = require('cors');
 const { patchController } = require('./controllers/sql/patch');
 const { deleteController } = require('./controllers/sql/delete');
+const { notificationController } = require('./controllers/sql/notification');
 
 app.use(express.json());
 app.use(cors());
@@ -18,6 +19,7 @@ app.get('/', (req, res) => {
     res.status(200).json({ message: "OK" });
 });
 
+app.post('/send-notification/:endpoint', getEndpoint, notificationController);
 app.post('/create-table', createTableController);
 app.post('/update-table', updateTableController);
 

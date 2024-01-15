@@ -178,6 +178,18 @@ const endpoints = {
         // Add more DELETE endpoints if needed
     },
 
+    "NOTIFICATION": {
+        "/send-notification-endpoint": {
+            "method": "POST",
+            "server_key": "",
+
+            "tableName": "user",
+            "fcm_col_name": "fcm_token",
+            "where": { "name": "req.query.id" },
+            "dbConnectionString": "root:root@localhost:3306/api_maker",
+        },
+    }
+
 }
 
 module.exports = {
