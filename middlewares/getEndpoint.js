@@ -10,7 +10,6 @@ const getEndpoint = (req, res, next) => {
         req.method = 'NOTIFICATION';
     }
 
-    console.log(pathname);
     const endpoint = endpoints[req.method.toUpperCase()][pathname];
     if (!endpoint) {
         return res.status(404).json({ message: "Endpoint not found" });
