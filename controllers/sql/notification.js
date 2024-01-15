@@ -28,7 +28,9 @@ async function notificationController(req, res) {
                 connection = await createConnection(endpoint.dbConnectionString);
             }
 
-            const requests = notificationsData.map(async (notificationObject) => {
+            const requests = notificationsData.map(async (notificationObject, notificationObjectIndex) => {
+                // for (let notificationObjectIndex = 0; notificationObjectIndex < notificationsData.length; notificationObjectIndex++) {
+                // const notificationObject = notificationsData[notificationObjectIndex];
                 let fcm_token = notificationObject.fcm_token;
 
                 if (!fcm_token) {
@@ -36,64 +38,22 @@ async function notificationController(req, res) {
                         try {
                             const whereClause = endpoint.where;
                             const whereConditions = Object.keys(whereClause).map(key => `${key} = ?`).join(' AND ');
-                            const whereValues = Object.values(whereClause).map(key => {
-                                if (key.startsWith('req.')) {
-                                    const reqKey = key.replace('req.', '');
-                                    const nestedKeys = reqKey.split('.');
-                                    let nestedValue = req;
-
-                                    for (const nestedKey of nestedKeys) {
-                                        if (nestedValue.hasOwnProperty(nestedKey)) {
-                                            nestedValue = nestedValue[nestedKey];
-                                        } else {
-                                            // Handle the case where a nested property is not found
-                                            nestedValue = undefined;
-                                            break;
-                                        }
-                                    }
-
-                                    return nestedValue;
-                                } else if (key.includes('notificationObject.')) {
-                                    const reqKey = key.replace('notificationObject.', '');
-                                    const nestedKeys = reqKey.split('.');
-                                    console.log("TCL: notificationController -> nestedKeys", nestedKeys)
-                                    let nestedValue = notificationObject;
-
-                                    for (const nestedKey of nestedKeys) {
-                                        if (nestedValue.hasOwnProperty(nestedKey)) {
-                                            nestedValue = nestedValue[nestedKey];
-                                            console.log("TCL: notificationController -> nestedValue", nestedValue)
-                                        }
-                                        else {
-                                            nestedValue = undefined;
-                                            break;
-                                        }
-                                    }
-
-                                    return nestedValue;
-                                }
-                                else {
-                                    return key;
-                                }
-                            });
+                            const whereValues = getWhereValues(whereClause, req, notificationObject);
 
                             const query = `SELECT ?? FROM ?? WHERE ${whereConditions}`;
                             const values = [endpoint.fcm_col_name, endpoint.tableName, ...whereValues];
-                            console.log("TCL: notificationController -> values, query", values, query)
 
-                            connection.query(query, values, (error, results) => {
-                                if (error) {
-                                    console.error('Database error:', error.message);
-                                    throw new Error('Error retrieving `fcm_token` from the database.');
-                                }
+                            const {promisify} = require('util');
+                            const queryAsync = promisify(connection.query).bind(connection);
 
-                                if (results.length > 0) {
-                                    // Assuming the result is an array of objects, each containing a field named endpoint.fcm_col_name
-                                    fcm_token = results[0][endpoint.fcm_col_name];
-                                } else {
-                                    throw new Error('No matching record found in the database.');
-                                }
-                            });
+
+                            const results = await queryAsync(query, values);
+
+                            if (results.length > 0) {
+                                fcm_token = results[0][endpoint.fcm_col_name];
+                            } else {
+                                throw new Error('No matching record found in the database.');
+                            }
 
                         } catch (error) {
                             console.error('Database error:', error.message);
@@ -103,7 +63,6 @@ async function notificationController(req, res) {
                         throw new Error('`fcm_token` is required.');
                     }
                 }
-
 
                 const notification = notificationObject.notification;
                 const data = notificationObject.data;
@@ -122,12 +81,14 @@ async function notificationController(req, res) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`${response.status} - ${response.statusText}`);
+                    // throw new Error(`${response.status} - ${response.statusText}`);
+                    return ({ success: false, message: `${response.status} - ${response.statusText}` });
                 }
 
                 // If you need to handle the response, you can parse it here
                 // const jsonResponse = await response.json();
-                return { success: true, message: 'Notification sent.' };
+                return ({ success: true, message: 'Notification sent.' });
+                // }
             });
 
             // Use Promise.all to execute all requests concurrently
@@ -152,6 +113,48 @@ async function notificationController(req, res) {
         if (error.sql) delete error.sql;
         res.status(500).json({ message: 'Internal server error', log: error });
     }
+}
+
+
+const getWhereValues = (whereClause, req, notificationObject) => {
+    return Object.values(whereClause).map(key => {
+        if (key.startsWith('req.')) {
+            const reqKey = key.replace('req.', '');
+            const nestedKeys = reqKey.split('.');
+            let nestedValue = req;
+
+            for (const nestedKey of nestedKeys) {
+                if (nestedValue.hasOwnProperty(nestedKey)) {
+                    nestedValue = nestedValue[nestedKey];
+                } else {
+                    // Handle the case where a nested property is not found
+                    nestedValue = undefined;
+                    break;
+                }
+            }
+
+            return nestedValue;
+        } else if (key.includes('notificationObject.')) {
+            const reqKey = key.replace('notificationObject.', '');
+            const nestedKeys = reqKey.split('.');
+            let nestedValue = notificationObject;
+
+            for (const nestedKey of nestedKeys) {
+                if (nestedValue.hasOwnProperty(nestedKey)) {
+                    nestedValue = nestedValue[nestedKey];
+                }
+                else {
+                    nestedValue = undefined;
+                    break;
+                }
+            }
+
+            return nestedValue;
+        }
+        else {
+            return key;
+        }
+    });
 }
 
 module.exports = {
