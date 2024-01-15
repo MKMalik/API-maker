@@ -185,7 +185,8 @@ const endpoints = {
 
             "tableName": "user",
             "fcm_col_name": "fcm_token",
-            "where": { "name": "req.query.id" },
+            // "where": { "name": "req.query.id" },
+            "where": { "id": "notificationObject.userId" },
             "dbConnectionString": "root:root@localhost:3306/api_maker",
         },
     }

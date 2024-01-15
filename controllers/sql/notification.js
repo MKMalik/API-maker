@@ -28,12 +28,13 @@ async function notificationController(req, res) {
                 connection = await createConnection(endpoint.dbConnectionString);
             }
 
-            const requests = notificationsData.map(async (ntf) => {
-                let fcm_token = ntf.fcm_token;
+            const requests = notificationsData.map(async (notificationObject) => {
+                let fcm_token = notificationObject.fcm_token;
 
                 if (!fcm_token) {
                     if (endpoint.tableName && endpoint.fcm_col_name) {
                         try {
+                            const whereClause = endpoint.where;
                             const whereConditions = Object.keys(whereClause).map(key => `${key} = ?`).join(' AND ');
                             const whereValues = Object.values(whereClause).map(key => {
                                 if (key.startsWith('req.')) {
@@ -52,13 +53,33 @@ async function notificationController(req, res) {
                                     }
 
                                     return nestedValue;
-                                } else {
+                                } else if (key.includes('notificationObject.')) {
+                                    const reqKey = key.replace('notificationObject.', '');
+                                    const nestedKeys = reqKey.split('.');
+                                    console.log("TCL: notificationController -> nestedKeys", nestedKeys)
+                                    let nestedValue = notificationObject;
+
+                                    for (const nestedKey of nestedKeys) {
+                                        if (nestedValue.hasOwnProperty(nestedKey)) {
+                                            nestedValue = nestedValue[nestedKey];
+                                            console.log("TCL: notificationController -> nestedValue", nestedValue)
+                                        }
+                                        else {
+                                            nestedValue = undefined;
+                                            break;
+                                        }
+                                    }
+
+                                    return nestedValue;
+                                }
+                                else {
                                     return key;
                                 }
                             });
 
                             const query = `SELECT ?? FROM ?? WHERE ${whereConditions}`;
                             const values = [endpoint.fcm_col_name, endpoint.tableName, ...whereValues];
+                            console.log("TCL: notificationController -> values, query", values, query)
 
                             connection.query(query, values, (error, results) => {
                                 if (error) {
@@ -84,8 +105,8 @@ async function notificationController(req, res) {
                 }
 
 
-                const notification = ntf.notification;
-                const data = ntf.data;
+                const notification = notificationObject.notification;
+                const data = notificationObject.data;
 
                 const response = await fetch('https://fcm.googleapis.com/fcm/send', {
                     method: 'POST',
@@ -101,7 +122,7 @@ async function notificationController(req, res) {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                    throw new Error(`${response.status} - ${response.statusText}`);
                 }
 
                 // If you need to handle the response, you can parse it here
