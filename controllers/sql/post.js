@@ -1,11 +1,8 @@
-const { endpoints } = require("../../endpoints");
-const url = require('url');
 const { createConnection, closeConnection } = require("../../utils/db.helpers");
 
 async function postController(req, res, next) {
     try {
-        const parsedUrl = url.parse(req.url, true);
-        const endpoint = endpoints["POST"][parsedUrl.pathname];
+        const endpoint = req.endpoint;
 
         const dbConnectionString = endpoint.dbConnectionString;
         const connection = createConnection(dbConnectionString);
