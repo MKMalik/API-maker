@@ -29,8 +29,6 @@ async function notificationController(req, res) {
             }
 
             const requests = notificationsData.map(async (notificationObject, notificationObjectIndex) => {
-                // for (let notificationObjectIndex = 0; notificationObjectIndex < notificationsData.length; notificationObjectIndex++) {
-                // const notificationObject = notificationsData[notificationObjectIndex];
                 let fcm_token = notificationObject.fcm_token;
 
                 if (!fcm_token) {
@@ -43,7 +41,7 @@ async function notificationController(req, res) {
                             const query = `SELECT ?? FROM ?? WHERE ${whereConditions}`;
                             const values = [endpoint.fcm_col_name, endpoint.tableName, ...whereValues];
 
-                            const {promisify} = require('util');
+                            const { promisify } = require('util');
                             const queryAsync = promisify(connection.query).bind(connection);
 
 
@@ -80,14 +78,23 @@ async function notificationController(req, res) {
                     }),
                 });
 
-                if (!response.ok) {
+                let jsonResponse = {};
+                try {
+                    jsonResponse = await response.json();
+                } catch (error) {
+
+                }
+                if (!response.ok || (!jsonResponse?.success || jsonResponse?.failure)) {
                     // throw new Error(`${response.status} - ${response.statusText}`);
+                    if (jsonResponse.failure) {
+                        return ({ success: false, message: jsonResponse?.results[0]?.error ?? 'Failed to sent notification.', firebaseError: jsonResponse });
+                    }
                     return ({ success: false, message: `${response.status} - ${response.statusText}` });
                 }
 
                 // If you need to handle the response, you can parse it here
                 // const jsonResponse = await response.json();
-                return ({ success: true, message: 'Notification sent.' });
+                return ({ success: true, message: 'Notification sent.', response: jsonResponse });
                 // }
             });
 
@@ -100,9 +107,9 @@ async function notificationController(req, res) {
             if (connection) closeConnection(connection);
 
             if (hasError) {
-                return res.status(500).json({ message: 'Some notifications failed to send.', errors: results });
+                return res.status(500).json({ message: 'Some notifications failed to send.', results: results });
             } else {
-                return res.status(200).json({ message: 'All notifications sent successfully.' });
+                return res.status(200).json({ message: 'All notifications sent successfully.', results });
             }
         } catch (error) {
             console.error('Error:', error.message);
