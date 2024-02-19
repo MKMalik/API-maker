@@ -6,126 +6,130 @@ module.exports = {
       tableName: "user",
       columns: ["*"],
       excludeColumns: ["password", "fcm_token", "deleted_at"],
-      where: { "user_role_id": 1 },
+      // where: { "user_role_id": 1 },
       allowedQueryParams: [],
       // rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
       dbConnectionString: "root:password@localhost:3306/tabletop",
       includes: [
         {
-          tableName: "restaurant",
-          columns: ["*"],
-          // "excludeColumns": ["address_line"],
-          relationship: {
-            "parentColumn": "user.restaurant_id",
-            "childColumn": "restaurant.id"
-          },
-        }
-      ],
-
-
-    },
-    "/users": {
-      method: "GET",
-      tableName: "user",
-      columns: ["*"],
-      excludeColumns: ["password", "fcm_token", "deleted_at"],
-      where: { "user_role_id": 1 },
-      allowedQueryParams: [],
-      rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
-      dbConnectionString: "root:root@localhost:3306/tabletop"
-    },
-
-    "/users-mongo": {
-      method: "GET",
-      tableName: "sample_blog",
-      columns: ["_id", "title", "slug",],
-      where: { "_id": '65724ee1d9d2ffd66bd5aaf7' },
-      allowedQueryParams: [],
-      // rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
-      dbConnectionString: "mongodb://localhost:27017/sample_blog"
-    },
-
-    "/user": {
-      "method": "GET",
-      "tableName": "user",
-      "where": {},
-      "columns": ["*", "id", "name", "email"],
-      "excludeColumns": ["role"],
-      "allowedQueryParams": ["id", "name", "email"], // TODO: make it mappable i.e., {"id": "user.id", "cityId": 'city.id',}
-      "limit": {
-        "value": 5,
-        "force": false
-      },
-      "includes": [
-        {
-          "tableName": "address",
+          "tableName": "restaurant",
           "where": {},
           "columns": [
             "id",
-            "address_line"
+            "name",
+            "is_active",
           ],
-          // "excludeColumns": ["address_line"],
+          "excludeColumns": ["deletedAt"],
           "relationship": {
-            "parentColumn": "user.id",
-            "childColumn": "address.user_id"
+            "parentColumn": "user.restaurant_id",
+            "childColumn": "restaurant.id"
           },
-          "includes": [
-            {
-              "tableName": "city",
-              "where": {},
-              "columns": [
-                "id",
-                "city_name",
-                "address_id"
-              ],
-              "excludeColumns": ["deletedAt"],
-              "relationship": {
-                "parentColumn": "address.id",
-                "childColumn": "city.address_id"
-              },
 
-            },
-            {
-              "tableName": "order_details",
-              "where": {},
-              "columns": ["*"],
-              "excludeColumns": ["deletedAt"],
-              "relationship": {
-                "parentColumn": "order_id",     // Specify the column in the "order" table that links to "order_details"
-                "childColumn": "order_id"      // Specify the column in the "order_details" table linked to "order"
-              },
-              "limit": {
-                "value": 5,
-                "force": false
-              }
-            },
-            {
-              "tableName": "address",
-              "where": {},
-              "columns": ["id", "name", "street", "city", "state", "zip", "country"],
-              "excludeColumns": ["deletedAt", "createdAt", "updatedAt"],
-              "relationship": {
-                "parentColumn": "user_id",    // Specify the column in the "user" table that links to "address"
-                "childColumn": "user_id"      // Specify the column in the "address" table linked to the "user"
-              },
-              "limit": {
-                "value": 5,
-                "force": false
-              }
-            }
-          ],
-          "limit": {
-            "value": 50,
-            "force": false
-          }
-        }
+        },
       ],
-      "rules": ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
-      "dbConnectionString": "root:root@localhost:3306/api_maker",
-      "jwtSecret": "THisISSuperSecretKeyTableTop)*&2327"
-    }
-
+    },
   },
+  "/users": {
+    method: "GET",
+    tableName: "user",
+    columns: ["*"],
+    excludeColumns: ["password", "fcm_token", "deleted_at"],
+    where: { "user_role_id": 1 },
+    allowedQueryParams: [],
+    rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
+    dbConnectionString: "root:root@localhost:3306/tabletop"
+  },
+
+  "/users-mongo": {
+    method: "GET",
+    tableName: "sample_blog",
+    columns: ["_id", "title", "slug",],
+    where: { "_id": '65724ee1d9d2ffd66bd5aaf7' },
+    allowedQueryParams: [],
+    // rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
+    dbConnectionString: "mongodb://localhost:27017/sample_blog"
+  },
+
+  "/user": {
+    "method": "GET",
+    "tableName": "user",
+    "where": {},
+    "columns": ["*", "id", "name", "email"],
+    "excludeColumns": ["role"],
+    "allowedQueryParams": ["id", "name", "email"], // TODO: make it mappable i.e., {"id": "user.id", "cityId": 'city.id',}
+    "limit": {
+      "value": 5,
+      "force": false
+    },
+    "includes": [
+      {
+        "tableName": "address",
+        "where": {},
+        "columns": [
+          "id",
+          "address_line"
+        ],
+        // "excludeColumns": ["address_line"],
+        "relationship": {
+          "parentColumn": "user.id",
+          "childColumn": "address.user_id"
+        },
+        "includes": [
+          {
+            "tableName": "city",
+            "where": {},
+            "columns": [
+              "id",
+              "city_name",
+              "address_id"
+            ],
+            "excludeColumns": ["deletedAt"],
+            "relationship": {
+              "parentColumn": "address.id",
+              "childColumn": "city.address_id"
+            },
+
+          },
+          {
+            "tableName": "order_details",
+            "where": {},
+            "columns": ["*"],
+            "excludeColumns": ["deletedAt"],
+            "relationship": {
+              "parentColumn": "order_id",     // Specify the column in the "order" table that links to "order_details"
+              "childColumn": "order_id"      // Specify the column in the "order_details" table linked to "order"
+            },
+            "limit": {
+              "value": 5,
+              "force": false
+            }
+          },
+          {
+            "tableName": "address",
+            "where": {},
+            "columns": ["id", "name", "street", "city", "state", "zip", "country"],
+            "excludeColumns": ["deletedAt", "createdAt", "updatedAt"],
+            "relationship": {
+              "parentColumn": "user_id",    // Specify the column in the "user" table that links to "address"
+              "childColumn": "user_id"      // Specify the column in the "address" table linked to the "user"
+            },
+            "limit": {
+              "value": 5,
+              "force": false
+            }
+          }
+        ],
+        "limit": {
+          "value": 50,
+          "force": false
+        }
+      }
+    ],
+    "rules": ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
+    "dbConnectionString": "root:root@localhost:3306/api_maker",
+    "jwtSecret": "THisISSuperSecretKeyTableTop)*&2327"
+  },
+
   "POST": {
     "/user": {
       method: "POST",

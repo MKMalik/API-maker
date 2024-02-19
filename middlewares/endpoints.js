@@ -6,20 +6,26 @@ module.exports = {
       tableName: "user",
       columns: ["*"],
       excludeColumns: ["password", "fcm_token", "deleted_at"],
-      where: { "user_role_id": 1 },
+      // where: { "user_role_id": 1 },
       allowedQueryParams: [],
       // rules: ["decodedToken.userId == req.query.userId", "decodedToken.roleId == 'admin' || true"],
       dbConnectionString: "root:password@localhost:3306/tabletop",
       includes: [
         {
-          tableName: "restaurant",
-          columns: ["*"],
-          // "excludeColumns": ["address_line"],
-          relationship: {
+          "tableName": "restaurant",
+          "where": {},
+          "columns": [
+            "id",
+            "name",
+            "is_active",
+          ],
+          "excludeColumns": ["deletedAt"],
+          "relationship": {
             "parentColumn": "user.restaurant_id",
             "childColumn": "restaurant.id"
           },
-        }
+
+        },
       ],
 
 
@@ -86,32 +92,32 @@ module.exports = {
 
             },
             {
-                "tableName": "order_details",
-                "where": {},
-                "columns": ["*"],
-                "excludeColumns": ["deletedAt"],
-                "relationship": {
-                    "parentColumn": "order_id",     // Specify the column in the "order" table that links to "order_details"
-                    "childColumn": "order_id"      // Specify the column in the "order_details" table linked to "order"
-                },
-                "limit": {
-                    "value": 5,
-                    "force": false
-                }
+              "tableName": "order_details",
+              "where": {},
+              "columns": ["*"],
+              "excludeColumns": ["deletedAt"],
+              "relationship": {
+                "parentColumn": "order_id",     // Specify the column in the "order" table that links to "order_details"
+                "childColumn": "order_id"      // Specify the column in the "order_details" table linked to "order"
+              },
+              "limit": {
+                "value": 5,
+                "force": false
+              }
             },
             {
-                "tableName": "address",
-                "where": {},
-                "columns": ["id", "name", "street", "city", "state", "zip", "country"],
-                "excludeColumns": ["deletedAt", "createdAt", "updatedAt"],
-                "relationship": {
-                    "parentColumn": "user_id",    // Specify the column in the "user" table that links to "address"
-                    "childColumn": "user_id"      // Specify the column in the "address" table linked to the "user"
-                },
-                "limit": {
-                    "value": 5,
-                    "force": false
-                }
+              "tableName": "address",
+              "where": {},
+              "columns": ["id", "name", "street", "city", "state", "zip", "country"],
+              "excludeColumns": ["deletedAt", "createdAt", "updatedAt"],
+              "relationship": {
+                "parentColumn": "user_id",    // Specify the column in the "user" table that links to "address"
+                "childColumn": "user_id"      // Specify the column in the "address" table linked to the "user"
+              },
+              "limit": {
+                "value": 5,
+                "force": false
+              }
             }
           ],
           "limit": {
