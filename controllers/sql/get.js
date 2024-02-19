@@ -190,7 +190,7 @@ async function getController(req, res, next) {
     }
 };
 
-function handleSelectForIncludes(includes, includeSelectQuery = '', isFirstLevel) {
+function handleSelectForIncludes(includes = [], includeSelectQuery = '', isFirstLevel) {
     console.log("TCL: handleSelectForIncludes -> includes.tableName", includes.length)
     includes.map((include) => {
         if (!isFirstLevel) {
