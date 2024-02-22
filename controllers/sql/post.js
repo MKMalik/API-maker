@@ -1,39 +1,35 @@
-const { createConnection, closeConnection } = require("../../utils/db.helpers");
+// const { createConnection, closeConnection } = require("../../utils/db.helpers");
+const { createConnection, closeConnection } = require('../../utils/db.helpers');
 
 async function postController(req, res) {
   try {
     const endpoint = req.endpoint;
 
     const dbConnectionString = endpoint.dbConnectionString;
-    const connection = createConnection(dbConnectionString);
+    const connection = await createConnection(dbConnectionString);
 
     const dataToInsert = req.body;
     const defaultReferenceColumn = endpoint.defaultReferenceColumn;
 
-    connection.beginTransaction(async (beginTransactionErr) => {
-      if (beginTransactionErr) {
-        closeConnection(connection);
-        console.log(beginTransactionErr);
-        return res.status(500).json({ message: "Transaction begin failed" });
-      }
+    await connection.beginTransaction();
+
+    try {
+      await performNestedInserts(connection, endpoint.nestedTables, dataToInsert, null, defaultReferenceColumn);
 
       try {
-        await performNestedInserts(connection, endpoint.nestedTables, dataToInsert, null, defaultReferenceColumn);
-
-        await connection.commit((commitErr) => {
-          if (commitErr) {
-            closeConnection(connection);
-            return res.status(500).json({ message: "Transaction commit failed" });
-          }
-          res.status(200).json({ message: 'Data inserted successfully' });
-        });
-
-      } catch (error) {
-        console.error('Error occurred:', error);
-        closeConnection(connection);
-        return res.status(500).json({ message: error.message });
+        await connection.commit();
+        await closeConnection(connection);
+        res.status(200).json({ message: 'Data inserted successfully' });
       }
-    });
+      catch (error) {
+        closeConnection(connection);
+        return res.status(500).json({ message: "Transaction commit failed" });
+      }
+    } catch (error) {
+      console.error('Error occurred:', error);
+      closeConnection(connection);
+      return res.status(500).json({ message: error.message });
+    }
 
   } catch (error) {
     console.error('Error occurred:', error);
@@ -68,16 +64,14 @@ async function performNestedInserts(connection, tablesToInsert, dataToInsert, pa
 
 async function insertIntoTable(connection, tableName, data) {
   console.log("TCL: insertIntoTable -> tableName, data", tableName, data)
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const query = `INSERT INTO ${tableName} SET ?`;
-
-    connection.query(query, data, (error, results) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(results);
-      }
-    });
+    try {
+      const [results] = await connection.query(query, data);
+      resolve(results);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 

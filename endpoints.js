@@ -139,7 +139,7 @@ module.exports = {
 
     "/insterUserAddress": {
       dbConnectionString: "root:password@localhost:3306/adarsh",
-      defaultReferenceColumn: "user_id",
+      // defaultReferenceColumn: "user_id",
       nestedTables: [
         {
           tableName: "user",
@@ -147,9 +147,8 @@ module.exports = {
           nestedTables: [
             {
               tableName: "address",
-              defaultReferenceColumn: "user_id",
-              columnsToInsert: ["country"],
               referenceColumn: "user_id",
+              columnsToInsert: ["country"],
             }
           ]
         }
@@ -215,18 +214,33 @@ module.exports = {
       "rules": ["decodedToken.role == 'admin'"],
       "jwtSecret": "THisISSuperSecretKeyTableTop)*&2327", // encrypted
     },
+    "/modifyName": {
+      tableName: "user",
+      dbConnectionString: "root:password@localhost:3306/adarsh",
+      columnsToUpdate: ["name"],
+      where: {
+        "id": "req.query.id",
+      },
+    }
     // Add more PATCH endpoints if needed
   },
 
   "DELETE": {
     "/user": {
-      "method": "DELETE",
-      "softDelete": true,
+      "softDelete": false,
       "tableName": "user",
       "dbConnectionString": "root:root@localhost:3306/api_maker",
       "where": { "name": "req.body.name" },
       "rules": ["decodedToken.role == 'admin'"],
     },
+    "/deleteUser": {
+      softDelete: false,
+      tableName: "user",
+      dbConnectionString: "root:password@localhost:3306/adarsh",
+      where: {
+        id: "req.query.id",
+      }
+    }
     // Add more DELETE endpoints if needed
   },
 

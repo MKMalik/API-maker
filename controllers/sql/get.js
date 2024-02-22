@@ -173,7 +173,7 @@ async function getController(req, res, next) {
     }
 
     try {
-      const results = await connection.query(sqlQuery)
+      const [results] = await connection.query(sqlQuery)
       let response = { data: results };
       if (limit) {
         response.limit = parseInt(limit);

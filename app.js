@@ -4,13 +4,20 @@ const cluster = require("cluster");
 const numCPUs = require("os").cpus().length;
 
 if (cluster.isMaster) {
+  // Function to fork a new worker process
+  const forkWorker = () => {
+    const newWorker = cluster.fork();
+    console.log(`Forked new worker with PID ${newWorker.process.pid}`);
+  };
+
   // Create a worker for each CPU
   for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
+    forkWorker();
   }
 
   cluster.on("exit", (worker, _code, _signal) => {
     console.log(`Worker ${worker.process.pid} died`);
+    forkWorker();
   });
 } else {
   const app = express();
