@@ -1,37 +1,47 @@
 require("dotenv").config();
 const express = require("express");
-const app = express();
+const cluster = require("cluster");
+const numCPUs = require("os").cpus().length;
 
-const { getController } = require("./controllers/sql/get");
-const { postController } = require("./controllers/sql/post");
-const {
-  createTableController,
-  updateTableController,
-} = require("./controllers/table");
-const { verifyTokenWithRules } = require("./middlewares/verifyTokenWithRules");
-const { getEndpoint } = require("./middlewares/getEndpoint");
-// const { mongodbGetController } = require("./controllers/mongodb/get");
-const cors = require("cors");
-const { patchController } = require("./controllers/sql/patch");
-const { deleteController } = require("./controllers/sql/delete");
-// const { notificationController } = require("./controllers/sql/notification");
+if (cluster.isMaster) {
+  // Create a worker for each CPU
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
 
-app.use(express.json());
-app.use(cors());
-app.get("/", (req, res) => {
-  res.status(200).json({ message: "OK" });
-});
+  cluster.on("exit", (worker, _code, _signal) => {
+    console.log(`Worker ${worker.process.pid} died`);
+  });
+} else {
+  const app = express();
+  const { getController } = require("./controllers/sql/get");
+  const { postController } = require("./controllers/sql/post");
+  const {
+    createTableController,
+    updateTableController,
+  } = require("./controllers/table");
+  const { verifyTokenWithRules } = require("./middlewares/verifyTokenWithRules");
+  const { getEndpoint } = require("./middlewares/getEndpoint");
+  const cors = require("cors");
+  const { patchController } = require("./controllers/sql/patch");
+  const { deleteController } = require("./controllers/sql/delete");
 
-// app.post("/send-notification/:endpoint", getEndpoint, notificationController);
-app.post("/create-table", createTableController);
-app.post("/update-table", updateTableController);
+  app.use(express.json());
+  app.use(cors());
+  app.get("/", (_, res) => {
+    res.status(200).json({ message: "OK" });
+  });
 
-app.get("/:endpoint", getEndpoint, verifyTokenWithRules, getController);
-// app.get('/:endpoint', getEndpoint, verifyTokenWithRules, mongodbGetController);
-app.post("/:endpoint", getEndpoint, verifyTokenWithRules, postController);
-app.patch("/:endpoint", getEndpoint, verifyTokenWithRules, patchController);
-app.delete("/:endpoint", getEndpoint, verifyTokenWithRules, deleteController);
+  app.post("/create-table", createTableController);
+  app.post("/update-table", updateTableController);
 
-app.listen(5500, () => {
-  console.log("listening on port 5500");
-});
+  app.get("/:endpoint", getEndpoint, verifyTokenWithRules, getController);
+  app.post("/:endpoint", getEndpoint, verifyTokenWithRules, postController);
+  app.patch("/:endpoint", getEndpoint, verifyTokenWithRules, patchController);
+  app.delete("/:endpoint", getEndpoint, verifyTokenWithRules, deleteController);
+
+  app.listen(5500, () => {
+    console.log(`Worker ${process.pid} listening on port 5500`);
+  });
+}
+

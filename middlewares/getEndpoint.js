@@ -1,8 +1,9 @@
 // const { endpoints } = require("../endpoints");
+const path = require('path');
 const url = require('url');
 
 // Path to your endpoints JavaScript file
-const endpointsFilePath = './endpoints.js';
+const endpointsFilePath = path.resolve(path.dirname(process.execPath), './endpoints.js');
 
 // Load endpoint configurations from external JavaScript file
 let endpoints = {};
@@ -15,6 +16,8 @@ try {
 }
 const getEndpoint = (req, res, next) => {
   const parsedUrl = url.parse(req.url, true);
+
+  // console.log(parsedUrl, req);
   let pathname = parsedUrl.pathname;
 
   if (pathname.startsWith('/send-notification')) {
@@ -23,6 +26,8 @@ const getEndpoint = (req, res, next) => {
   }
 
   const endpoint = endpoints[req.method.toUpperCase()][pathname];
+
+  // console.log("Endpoint: ", endpoint);
   if (!endpoint) {
     console.log(endpoint);
     return res.status(404).json({ message: "Endpoint not found" });

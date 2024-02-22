@@ -4,7 +4,17 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "build": "npx pkg ."
+  },
+  "bin": "app.js",
+  "pkg": {
+    "scripts": "start",
+    "targets": [
+      "node18-linux-x64",
+      "node18-macos-x64",
+      "node18-win-x64"
+    ]
   },
   "keywords": [
     "api-maker",

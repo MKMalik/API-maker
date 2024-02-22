@@ -9,7 +9,7 @@ function getRequiredColumns(columns, excludeColumns = [], allColumns, tableName)
         requiredColumns = columns.filter(col => !excludeColumns?.includes(col)).map(col => `${tableName}.${col}`);
     }
 
-    console.log("TCL: getRequiredColumns -> requiredColumns", requiredColumns)
+    // console.log("TCL: getRequiredColumns -> requiredColumns", requiredColumns)
     return requiredColumns;
 }
 

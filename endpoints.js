@@ -1,6 +1,11 @@
 
 module.exports = {
   "GET": {
+    "/adarsh": {
+      tableName: "restaurant",
+      columns: ["*"],
+      dbConnectionString: "root:password@localhost:3306/tabletop",
+    },
     "/bind": {
       // method: "GET",
       tableName: "user",
@@ -131,6 +136,26 @@ module.exports = {
   },
 
   "POST": {
+
+    "/insterUserAddress": {
+      dbConnectionString: "root:password@localhost:3306/adarsh",
+      defaultReferenceColumn: "user_id",
+      nestedTables: [
+        {
+          tableName: "user",
+          columnsToInsert: ["name"],
+          nestedTables: [
+            {
+              tableName: "address",
+              defaultReferenceColumn: "user_id",
+              columnsToInsert: ["country"],
+              referenceColumn: "user_id",
+            }
+          ]
+        }
+      ]
+    },
+
     "/user": {
       method: "POST",
       tableName: "user",

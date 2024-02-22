@@ -166,8 +166,8 @@ async function getController(req, res, next) {
             rowsCount = results;
         });
 
-        console.log("TCL: rowsCount", rowsCount)
-        console.log(`\n\n\nQuery: ${sqlQuery}\n\n\n`);
+        // console.log("TCL: rowsCount", rowsCount)
+        // console.log(`\n\n\nQuery: ${sqlQuery}\n\n\n`);
         connection.query(sqlQuery, function (error, results, fields) {
             if (error) {
                 if (error.sql) delete error.sql;
@@ -191,7 +191,7 @@ async function getController(req, res, next) {
 };
 
 function handleSelectForIncludes(includes = [], includeSelectQuery = '', isFirstLevel) {
-    console.log("TCL: handleSelectForIncludes -> includes.tableName", includes.length)
+    // console.log("TCL: handleSelectForIncludes -> includes.tableName", includes.length)
     includes.map((include) => {
         if (!isFirstLevel) {
             includeSelectQuery += `, '${include.tableName}', `

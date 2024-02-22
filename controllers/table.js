@@ -39,7 +39,7 @@ async function createTableController(req, res, next) {
             }
 
             closeConnection(connection);
-            console.log(`\n\n\nQuery: ${query}\n\n\n`);
+            // console.log(`\n\n\nQuery: ${query}\n\n\n`);
 
             return res.status(201).json({ message: `Table '${table_name}' created successfully` });
         });
