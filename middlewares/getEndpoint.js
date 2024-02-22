@@ -9,7 +9,10 @@ const endpointsFilePath = path.resolve(path.dirname(process.execPath), './endpoi
 let endpoints = {};
 
 try {
-  endpoints = require(endpointsFilePath);
+  if (process.env.NODE_ENV === 'development') {
+    endpoints = require('../endpoints');
+  } else
+    endpoints = require(endpointsFilePath);
 } catch (err) {
   console.error('Error loading endpoints file:', err);
   process.exit(1);

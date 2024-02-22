@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon app.js",
+    "dev": "NODE_ENV=development nodemon app.js",
     "build": "npx pkg ."
   },
   "bin": "app.js",
@@ -30,7 +30,8 @@
     "firebase-admin": "^12.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.3.0",
-    "mysql": "^2.18.1"
+    "mysql2": "^3.9.1",
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "eslint": "^8.56.0",
