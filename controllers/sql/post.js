@@ -1,5 +1,7 @@
 // const { createConnection, closeConnection } = require("../../utils/db.helpers");
 const { createConnection, closeConnection } = require('../../utils/db.helpers');
+const { calculateHash } = require('../../utils/encrypt');
+const jwt = require('jsonwebtoken');
 
 async function postController(req, res) {
   try {
@@ -14,12 +16,21 @@ async function postController(req, res) {
     await connection.beginTransaction();
 
     try {
-      await performNestedInserts(connection, endpoint.nestedTables, dataToInsert, null, defaultReferenceColumn);
+      const insertedDataResults = await performNestedInserts(connection, endpoint.nestedTables, dataToInsert, null, defaultReferenceColumn);
+      console.log(insertedDataResults);
 
       try {
         await connection.commit();
         await closeConnection(connection);
-        res.status(200).json({ message: 'Data inserted successfully' });
+
+        // Check if req.endpoint.jwt exists and contains data
+        if (req.endpoint.jwt && req.endpoint.jwt.length > 0) {
+          const tokenData = await getDataForJWT(insertedDataResults, req.endpoint.jwt, dataToInsert);
+          const token = jwt.sign(tokenData, req.endpoint.jwtSecret);
+          res.status(200).json({ message: 'Data inserted successfully', token });
+        } else {
+          res.status(200).json({ message: 'Data inserted successfully' });
+        }
       }
       catch (error) {
         closeConnection(connection);
@@ -38,28 +49,47 @@ async function postController(req, res) {
   }
 }
 
-async function performNestedInserts(connection, tablesToInsert, dataToInsert, parentId, referenceColumn) {
-  for (const table of tablesToInsert) {
-    const { tableName, columnsToInsert, nestedTables, referenceColumn } = table;
 
+async function performNestedInserts(connection, tablesToInsert, dataToInsert, parentId, referenceColumn) {
+  const insertedDataResults = []; // Array to store insertion results
+
+  for (const table of tablesToInsert) {
+    const { tableName, columnsToInsert, nestedTables } = table;
+    const hashRegex = /^hash\(.+\)$/;
     const insertData = {};
-    columnsToInsert.forEach(column => {
-      if (dataToInsert[tableName]?.hasOwnProperty(column)) {
+
+    for (const column of columnsToInsert) {
+      if (hashRegex.test(column)) {
+        // Handle hash(*) column case
+        const columnName = column.substring(5, column.length - 1); // Extracting the column name from "hash(columnName)"
+        if (dataToInsert[tableName]?.hasOwnProperty(columnName)) {
+          insertData[columnName] = await calculateHash(dataToInsert[tableName][columnName]); // Assuming you have a function to calculate the hash
+        }
+      } else if (dataToInsert[tableName]?.hasOwnProperty(column)) {
         insertData[column] = dataToInsert[tableName][column];
       }
-    });
+    }
 
     if (parentId && referenceColumn) {
       insertData[referenceColumn] = parentId;
     }
-
-    const insertionResult = await insertIntoTable(connection, tableName, insertData);
+    let insertionResult;
+    try {
+      insertionResult = await insertIntoTable(connection, tableName, insertData);
+      insertedDataResults.push({ tableName, insertId: insertionResult.insertId, affectedRows: insertionResult.affectedRows });
+    } catch (error) {
+      console.error('Error occurred during insertion:', error);
+      throw error; // Rethrow the error to stop further nested inserts
+    }
 
     if (nestedTables && nestedTables.length > 0) {
       const lastInsertId = insertionResult.insertId;
-      await performNestedInserts(connection, nestedTables, dataToInsert, lastInsertId, referenceColumn);
+      const nestedInsertionResults = await performNestedInserts(connection, nestedTables, dataToInsert, lastInsertId, referenceColumn);
+      insertedDataResults.push(...nestedInsertionResults); // Store nested insertion results
     }
   }
+
+  return insertedDataResults;
 }
 
 async function insertIntoTable(connection, tableName, data) {
@@ -75,4 +105,23 @@ async function insertIntoTable(connection, tableName, data) {
   });
 }
 
+async function getDataForJWT(insertedDataResults, jwtColumns, dataToInsert) {
+  const tokenData = {};
+
+  for (const jwtColumn of jwtColumns) {
+    const [tableName, columnName] = jwtColumn.split('.'); // Split table name and column name
+    if (dataToInsert[tableName]?.hasOwnProperty(columnName)) {
+      tokenData[columnName] = dataToInsert[tableName][columnName];
+    }
+  }
+
+  // Add IDs of inserted rows to the token data
+  for (const insertedData of insertedDataResults) {
+    if (insertedData.insertId) {
+      tokenData[`${insertedData.tableName}_id`] = insertedData.insertId;
+    }
+  }
+
+  return tokenData;
+}
 module.exports = { postController };

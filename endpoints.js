@@ -156,13 +156,37 @@ module.exports = {
     },
 
     "/user": {
-      method: "POST",
       tableName: "user",
-      dbConnectionString: "root:root@localhost:3306/api_maker",
-      columnsToInsert: ["name", "role", "email"],
-      excludeColumns: ["id", "created_at", "updated_at", "deleted_at"],
-      requiredColumns: ["name", "email",],
-      rules: ["decodedToken.role == 'admin'"],
+      dbConnectionString: "root:password@localhost:3306/api_maker",
+      nestedTables: [
+        {
+          tableName: "user",
+          columnsToInsert: ["name", "email", "hash(password)"],
+          excludeColumns: ["id", "created_at", "updated_at", "deleted_at"],
+          requiredColumns: ["name", "email",],
+        }
+      ],
+      // rules: ["decodedToken.role == 'admin'"],
+    },
+    "/userAddr": {
+      dbConnectionString: "root:password@localhost:3306/api_maker",
+      defaultReferenceColumn: "user_id",
+      jwtSecret: "THisISSuperSecretKeyTableTop)*&2327",
+      jwt: ["user.id", "user.email", "address.street"],
+      nestedTables: [
+        {
+          tableName: "user",
+          columnsToInsert: ["name", "email", "hash(password)"],
+          // requiredColumns: ["name", "email", "password"],
+          nestedTables: [
+            {
+              tableName: "address",
+              columnsToInsert: ["street"],
+              referenceColumn: "user_id",
+            }
+          ],
+        }
+      ],
     },
     "/nestedInsert": {
       "method": "POST",
