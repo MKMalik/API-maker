@@ -5,7 +5,11 @@ async function calculateHash(value) {
   const hashedValue = await bcrypt.hash(value, saltRounds);
   return hashedValue;
 }
+async function verifyHash(hashedValue, plainText) {
+  return await bcrypt.compare(plainText, hashedValue);
+}
 
 module.exports = {
-  calculateHash
+  calculateHash,
+  verifyHash,
 }

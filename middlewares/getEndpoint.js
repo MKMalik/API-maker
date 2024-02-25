@@ -22,13 +22,15 @@ const getEndpoint = (req, res, next) => {
 
   // console.log(parsedUrl, req);
   let pathname = parsedUrl.pathname;
-
+  console.log(pathname, ' pathname');
   if (pathname.startsWith('/send-notification')) {
     pathname = pathname.replace('/send-notification', '');
     req.method = 'NOTIFICATION';
   }
-
   const endpoint = endpoints[req.method.toUpperCase()][pathname];
+  if (pathname.startsWith('/login')) {
+    req.method = 'LOGIN';
+  }
 
   // console.log("Endpoint: ", endpoint);
   if (!endpoint) {

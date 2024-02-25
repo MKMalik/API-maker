@@ -44,6 +44,7 @@ if (cluster.isMaster) {
 
   app.get("/:endpoint", getEndpoint, verifyTokenWithRules, getController);
   app.post("/:endpoint", getEndpoint, verifyTokenWithRules, postController);
+  app.post("/login/:endpoint", getEndpoint, verifyTokenWithRules, postController);
   app.patch("/:endpoint", getEndpoint, verifyTokenWithRules, patchController);
   app.delete("/:endpoint", getEndpoint, verifyTokenWithRules, deleteController);
 

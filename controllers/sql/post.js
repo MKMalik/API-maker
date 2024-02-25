@@ -1,9 +1,9 @@
 // const { createConnection, closeConnection } = require("../../utils/db.helpers");
 const { createConnection, closeConnection } = require('../../utils/db.helpers');
-const { calculateHash } = require('../../utils/encrypt');
+const { calculateHash, verifyHash } = require('../../utils/encrypt');
 const jwt = require('jsonwebtoken');
 
-async function postController(req, res) {
+async function postController(req, res, next) {
   try {
     const endpoint = req.endpoint;
 
@@ -11,6 +11,11 @@ async function postController(req, res) {
     const connection = await createConnection(dbConnectionString);
 
     const dataToInsert = req.body;
+
+    if (req.method === "LOGIN") {
+      return handleLogin(req, res, next, connection);
+    }
+
     const defaultReferenceColumn = endpoint.defaultReferenceColumn;
 
     await connection.beginTransaction();
@@ -52,8 +57,8 @@ async function postController(req, res) {
 
 async function performNestedInserts(connection, tablesToInsert, dataToInsert, parentId, referenceColumn) {
   const insertedDataResults = []; // Array to store insertion results
-
-  for (const table of tablesToInsert) {
+  // tablesToInsert will be empty in case of login (it's login api when endpoint.jwt exists) api (as it does not require to insert any data but to fetch and authenticate)
+  for (const table of tablesToInsert ?? []) {
     const { tableName, columnsToInsert, nestedTables } = table;
     const hashRegex = /^hash\(.+\)$/;
     const insertData = {};
@@ -124,4 +129,111 @@ async function getDataForJWT(insertedDataResults, jwtColumns, dataToInsert) {
 
   return tokenData;
 }
+
+async function handleLogin(req, res, next, connection) {
+  console.log('handleLogin')
+  const endpoint = req.endpoint;
+  const jwt = endpoint.jwt;
+  const matches = endpoint.matches;
+  const fetchedData = {};
+  let hashedParamInfo = [];
+  for (const match of matches) {
+    const tableName = match.tableName;
+    const parameters = match.parameters;
+    try {
+      const data = await fetchDataForTable(connection, tableName, parameters, req);
+      if (data.hash) {
+        hashedParamInfo = [...hashedParamInfo, ...(data.hash)];
+        delete data.hash;
+      }
+      fetchedData[tableName] = data.tableData;
+    } catch (error) {
+      closeConnection(connection);
+      return res.status(500).json({ message: error.message });
+    }
+  }
+
+  for (const hashInfo of hashedParamInfo) {
+    const [_, ...propertyNames] = hashInfo.ref.split('.');
+    // columnValue = requestBody[propertyName];
+    let plainText = req;
+    for (const propertyName of propertyNames) {
+      plainText = plainText[propertyName];
+    }
+    const isMatched = await verifyHash(fetchedData[hashInfo.tableName][hashInfo.columnName], plainText);
+    console.log(fetchedData[hashInfo.tableName][hashInfo.columnName], plainText, isMatched);
+    // console.log(hashedText, fetchedData[hashInfo.tableName][hashInfo.columnName]);
+    if (!isMatched) {
+      closeConnection(connection);
+      return res.status(403).json({ message: `Wrong value of ${hashInfo.ref} provided.` });
+    }
+  }
+  // for (const)
+  console.log(fetchedData, ' fetchedData');
+  closeConnection(connection);
+  return res.status(200).json({ fetchedData, hashedParamInfo });
+}
+
+async function fetchDataForTable(connection, tableName, parameters, req) {
+  const tableData = {}; // Object to store fetched data for the table
+
+  // Construct the SQL query
+  let query = `SELECT * FROM ${tableName} `;
+  const conditions = [];
+  const columns = [];
+  let hash = [];
+
+  // Build the WHERE conditions based on the parameters
+  for (const parameter of parameters) {
+    const columnName = parameter.column;
+    columns.push(columnName);
+    const ref = parameter.ref;
+    const fn = parameter.fn;
+
+    // Extract the value from the request body or execute the reference function
+    let columnValue;
+
+    if (ref.startsWith('req') && !fn) {
+      const [_, ...propertyNames] = ref.split('.');
+      // columnValue = requestBody[propertyName];
+      let propertyKey = req;
+      for (const propertyName of propertyNames) {
+        propertyKey = propertyKey[propertyName];
+      }
+      columnValue = propertyKey;
+    } else if (fn && fn === 'equal') {
+      columnValue = ref;
+    } else if (fn && fn === 'hash') {
+      hash = [...hash, { ref, tableName, columnName }]
+      // columnValue = await functions.hash(ref);
+      continue;
+    }
+
+    conditions.push(`${columnName} = '${columnValue}'`);
+  }
+  if (conditions.length) query += " WHERE ";
+
+  query += conditions.join(' AND ');
+
+  try {
+    // Execute the query
+    const [rows] = await connection.query(query);
+    // console.log(rows, query);
+    // If data is found, populate tableData with the fetched row
+    if (rows.length > 0) {
+      const fetchedRow = rows[0]; // Assuming only one row is fetched
+      for (const column in fetchedRow) {
+        tableData[column] = fetchedRow[column];
+      }
+    } else {
+      throw new Error(`Data not found in ${tableName}`);
+    }
+
+    return { tableData, hash };
+  } catch (error) {
+    console.error('Error occurred while fetching data:', error);
+    throw error;
+  }
+}
+
 module.exports = { postController };

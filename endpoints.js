@@ -188,6 +188,25 @@ module.exports = {
         }
       ],
     },
+    "/login/user": {
+      dbConnectionString: "root:password@localhost:3306/api_maker",
+      jwtSecret: "THisISSuperSecretKeyTableTop)*&2327",
+      jwt: ["user.id", "user.email", "address.street"],
+      matches: [
+        {
+          tableName: 'user',
+          parameters: [
+            { column: "email", ref: "req.body.email" },
+            { column: "password", ref: "req.body.password", fn: "hash" },
+          ],
+        },
+        {
+          tableName: "address",
+          parameters: [
+            { column: "user_id", ref: "12", fn: "equal" } ],
+        }
+      ],
+    },
     "/nestedInsert": {
       "method": "POST",
       "dbConnectionString": "root:root@localhost:3306/api_maker",
