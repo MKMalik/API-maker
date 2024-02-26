@@ -192,6 +192,7 @@ module.exports = {
       dbConnectionString: "root:password@localhost:3306/api_maker",
       jwtSecret: "THisISSuperSecretKeyTableTop)*&2327",
       jwt: ["user.id", "user.email", "address.street"],
+      jwtExpiry: 360, // seconds
       matches: [
         {
           tableName: 'user',

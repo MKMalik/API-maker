@@ -2,6 +2,7 @@
 const { createConnection, closeConnection } = require('../../utils/db.helpers');
 const { calculateHash, verifyHash } = require('../../utils/encrypt');
 const jwt = require('jsonwebtoken');
+const { signJwt } = require('../../utils/jwt');
 
 async function postController(req, res, next) {
   try {
@@ -131,17 +132,20 @@ async function getDataForJWT(insertedDataResults, jwtColumns, dataToInsert) {
 }
 
 async function handleLogin(req, res, next, connection) {
-  console.log('handleLogin')
   const endpoint = req.endpoint;
   const jwt = endpoint.jwt;
+  const jwtSecret = endpoint.jwtSecret;
   const matches = endpoint.matches;
   const fetchedData = {};
   let hashedParamInfo = [];
   for (const match of matches) {
     const tableName = match.tableName;
     const parameters = match.parameters;
+    const jwtColumnsToFetch = jwt?.filter((jwtParam) => {
+      return jwtParam.startsWith(tableName);
+    }).map((jwtParam) => jwtParam.split('.')[1]);
     try {
-      const data = await fetchDataForTable(connection, tableName, parameters, req);
+      const data = await fetchDataForTable(connection, tableName, parameters, jwtColumnsToFetch, req);
       if (data.hash) {
         hashedParamInfo = [...hashedParamInfo, ...(data.hash)];
         delete data.hash;
@@ -149,7 +153,7 @@ async function handleLogin(req, res, next, connection) {
       fetchedData[tableName] = data.tableData;
     } catch (error) {
       closeConnection(connection);
-      return res.status(500).json({ message: error.message });
+      return res.status(error.status ?? 500).json({ message: error.message });
     }
   }
 
@@ -168,19 +172,30 @@ async function handleLogin(req, res, next, connection) {
       return res.status(403).json({ message: `Wrong value of ${hashInfo.ref} provided.` });
     }
   }
-  // for (const)
-  console.log(fetchedData, ' fetchedData');
+
+  // jwt sign
+  let jwtParams = {};
+  for (const key of jwt ?? []) {
+    jwtParams[key] = getNestedValue(fetchedData, key);
+  }
+
+  const {token, payload: jwtPayload} = jwt ? signJwt(jwtParams, jwtSecret, endpoint.jwtExpiry) : {};
+  console.log(fetchedData, ' fetchedData', jwtParams);
   closeConnection(connection);
-  return res.status(200).json({ fetchedData, hashedParamInfo });
+  const response = { message: 'Login succcess', }
+  if (token) {
+    response.token = token;
+    response.data = jwtPayload;
+  }
+  return res.status(200).json(response);
 }
 
-async function fetchDataForTable(connection, tableName, parameters, req) {
+async function fetchDataForTable(connection, tableName, parameters, jwtColumnsToFetch, req) {
   const tableData = {}; // Object to store fetched data for the table
 
   // Construct the SQL query
-  let query = `SELECT * FROM ${tableName} `;
   const conditions = [];
-  const columns = [];
+  const columns = jwtColumnsToFetch ?? [];
   let hash = [];
 
   // Build the WHERE conditions based on the parameters
@@ -211,6 +226,9 @@ async function fetchDataForTable(connection, tableName, parameters, req) {
 
     conditions.push(`${columnName} = '${columnValue}'`);
   }
+  const columnsString = columns.map(column => `\`${column}\``).join(', ');
+  let query = `SELECT ${columnsString} FROM ${tableName} `;
+
   if (conditions.length) query += " WHERE ";
 
   query += conditions.join(' AND ');
@@ -226,14 +244,23 @@ async function fetchDataForTable(connection, tableName, parameters, req) {
         tableData[column] = fetchedRow[column];
       }
     } else {
-      throw new Error(`Data not found in ${tableName}`);
+      throw { message: `Data not found in ${tableName}`, status: 404 };
+      // return res.status(404).json({message: `Data not found in ${tableName}`})
     }
 
     return { tableData, hash };
   } catch (error) {
-    console.error('Error occurred while fetching data:', error);
+    console.error('Error occurred while fetching data:', JSON.stringify(error));
     throw error;
   }
 }
 
+function getNestedValue(obj, key) {
+  const propertyNames = key.split('.');
+  let value = obj;
+  for (const propertyName of propertyNames) {
+    value = value[propertyName];
+  }
+  return value;
+}
 module.exports = { postController };

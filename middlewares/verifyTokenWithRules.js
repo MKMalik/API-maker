@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { evaluateTokenRules } = require('../utils/validateToken');
+const { evaluateTokenRules, verifyToken } = require('../utils/jwt');
 
 const verifyTokenWithRules = async (req, res, next) => {
     // check if rules are defined and enabled
@@ -41,20 +41,5 @@ const verifyTokenWithRules = async (req, res, next) => {
         next();
     }
 };
-
-async function verifyToken(jwtToken, jwtSecret) {
-    return new Promise((resolve, reject) => {
-        jwt.verify(jwtToken, jwtSecret, (err, decodedToken) => {
-            if (err) {
-                // console.error('JWT verification error:', err);
-                reject(err);
-            } else {
-                resolve(decodedToken);
-            }
-        });
-    });
-}
-
-
 
 module.exports = { verifyTokenWithRules }
