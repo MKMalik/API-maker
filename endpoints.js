@@ -1,6 +1,17 @@
 
 module.exports = {
   "GET": {
+    "/get-user": {
+      tableName: "user",
+      dbConnectionString: "root:password@localhost:3306/api_maker",
+      columns: ["*"],
+      where: {
+        "id": 11
+      },
+      rules: ["decodedToken.user_email === req.body.email"],
+      jwtSecret: "THisISSuperSecretKeyTableTop)*&2327"
+
+    },
     "/adarsh": {
       tableName: "restaurant",
       columns: ["*"],
@@ -192,7 +203,7 @@ module.exports = {
       dbConnectionString: "root:password@localhost:3306/api_maker",
       jwtSecret: "THisISSuperSecretKeyTableTop)*&2327",
       jwt: ["user.id", "user.email", "address.street"],
-      jwtExpiry: 360, // seconds
+      jwtExpiry: 3600 * 2, // seconds
       matches: [
         {
           tableName: 'user',
@@ -204,7 +215,7 @@ module.exports = {
         {
           tableName: "address",
           parameters: [
-            { column: "user_id", ref: "12", fn: "equal" } ],
+            { column: "user_id", ref: "12", fn: "equal" }],
         }
       ],
     },

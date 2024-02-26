@@ -32,6 +32,7 @@ if (cluster.isMaster) {
   const cors = require("cors");
   const { patchController } = require("./controllers/sql/patch");
   const { deleteController } = require("./controllers/sql/delete");
+  const { handleLogin: loginController } = require('./controllers/sql/login');
 
   app.use(express.json());
   app.use(cors());
@@ -43,8 +44,8 @@ if (cluster.isMaster) {
   app.post("/update-table", updateTableController);
 
   app.get("/:endpoint", getEndpoint, verifyTokenWithRules, getController);
+  app.post("/login/:endpoint", getEndpoint, verifyTokenWithRules, loginController);
   app.post("/:endpoint", getEndpoint, verifyTokenWithRules, postController);
-  app.post("/login/:endpoint", getEndpoint, verifyTokenWithRules, postController);
   app.patch("/:endpoint", getEndpoint, verifyTokenWithRules, patchController);
   app.delete("/:endpoint", getEndpoint, verifyTokenWithRules, deleteController);
 
