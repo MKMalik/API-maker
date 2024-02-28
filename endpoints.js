@@ -8,6 +8,7 @@ module.exports = {
       where: {
         "id": 11
       },
+      allowedQueryParams: ["id", "email", "name"],
       rules: ["decodedToken.user_email === req.body.email"],
       jwtSecret: "THisISSuperSecretKeyTableTop)*&2327"
 

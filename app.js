@@ -1,9 +1,10 @@
 require("dotenv").config();
 const express = require("express");
 const cluster = require("cluster");
-const numCPUs = process.env.NODE_ENV === 'development' ? 1 : require("os").cpus().length;
+const isDevEnv = process.env.NODE_ENV === 'development';
+const numCPUs = require("os").cpus().length;
 
-if (cluster.isMaster) {
+if (!isDevEnv && cluster.isMaster) {
   // Function to fork a new worker process
   const forkWorker = () => {
     const newWorker = cluster.fork();
@@ -15,9 +16,7 @@ if (cluster.isMaster) {
   }
   cluster.on("exit", (worker, _code, _signal) => {
     console.log(`Worker ${worker.process.pid} died`);
-    if (process.env.NODE_ENV !== 'development') {
-      forkWorker();
-    }
+    forkWorker();
   });
 } else {
   const app = express();

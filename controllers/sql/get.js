@@ -1,4 +1,3 @@
-const { async } = require("@firebase/util");
 const { closeConnection, createConnection, fetchAllColumnsFromDatabase } = require("../../utils/db.helpers");
 const { getRequiredColumns, parseNestedJSON, parseNestedJSONandRemoveNulls } = require("../../utils/helpers");
 async function getController(req, res, next) {
