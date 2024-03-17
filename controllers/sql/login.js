@@ -14,13 +14,22 @@ async function handleLogin(req, res, next) {
   for (const match of matches) {
     const tableName = match.tableName;
     const parameters = match.parameters;
-    const jwtColumnsToFetch = jwt?.filter((jwtParam) => {
-      return jwtParam.startsWith(tableName);
-    }).map((jwtParam) => jwtParam.split('.')[1]);
+    const jwtColumnsToFetch = jwt
+      ?.filter((jwtParam) => {
+        return jwtParam.startsWith(tableName);
+      })
+      .map((jwtParam) => jwtParam.split(".")[1]);
     try {
-      const data = await fetchDataForTable(connection, tableName, parameters, jwtColumnsToFetch, req);
+      const data = await fetchDataForTable(
+        connection,
+        tableName,
+        parameters,
+        jwtColumnsToFetch,
+        req,
+        fetchedData,
+      );
       if (data.hash) {
-        hashedParamInfo = [...hashedParamInfo, ...(data.hash)];
+        hashedParamInfo = [...hashedParamInfo, ...data.hash];
         delete data.hash;
       }
       fetchedData[tableName] = data.tableData;
@@ -31,18 +40,28 @@ async function handleLogin(req, res, next) {
   }
 
   for (const hashInfo of hashedParamInfo) {
-    const [_, ...propertyNames] = hashInfo.ref.split('.');
+    const [_, ...propertyNames] = hashInfo.ref.split(".");
     // columnValue = requestBody[propertyName];
     let plainText = req;
     for (const propertyName of propertyNames) {
       plainText = plainText[propertyName];
     }
-    const isMatched = await verifyHash(fetchedData[hashInfo.tableName][hashInfo.columnName], plainText);
-    console.log(fetchedData[hashInfo.tableName][hashInfo.columnName], plainText, isMatched);
+    const isMatched = await verifyHash(
+      fetchedData[hashInfo.tableName][hashInfo.columnName],
+      plainText,
+    );
+    console.log(
+      fetchedData[hashInfo.tableName][hashInfo.columnName],
+      plainText,
+      isMatched,
+    );
     // console.log(hashedText, fetchedData[hashInfo.tableName][hashInfo.columnName]);
     if (!isMatched) {
       closeConnection(connection);
-      return res.status(403).json({ message: `Wrong value of ${hashInfo.ref} provided.` }); u
+      return res
+        .status(403)
+        .json({ message: `Wrong value of ${hashInfo.ref} provided.` });
+      u;
     }
   }
 
@@ -53,10 +72,12 @@ async function handleLogin(req, res, next) {
     jwtParams[jwtKey] = getNestedValue(fetchedData, key);
   }
 
-  const { token, payload: jwtPayload } = jwt ? signJwt(jwtParams, jwtSecret, endpoint.jwtExpiry) : {};
-  console.log(fetchedData, ' fetchedData', jwtParams);
+  const { token, payload: jwtPayload } = jwt
+    ? signJwt(jwtParams, jwtSecret, endpoint.jwtExpiry)
+    : {};
+  console.log(fetchedData, " fetchedData", jwtParams);
   closeConnection(connection);
-  const response = { message: 'Login succcess', }
+  const response = { message: "Login succcess" };
   if (token) {
     response.token = token;
     response.data = jwtPayload;
@@ -64,7 +85,14 @@ async function handleLogin(req, res, next) {
   return res.status(200).json(response);
 }
 
-async function fetchDataForTable(connection, tableName, parameters, jwtColumnsToFetch, req) {
+async function fetchDataForTable(
+  connection,
+  tableName,
+  parameters,
+  jwtColumnsToFetch,
+  req,
+  prevFetchedTables,
+) {
   const tableData = {}; // Object to store fetched data for the table
 
   // Construct the SQL query
@@ -82,30 +110,43 @@ async function fetchDataForTable(connection, tableName, parameters, jwtColumnsTo
     // Extract the value from the request body or execute the reference function
     let columnValue;
 
-    if (ref.startsWith('req') && !fn) {
-      const [_, ...propertyNames] = ref.split('.');
+    if (ref.startsWith("req") && !fn) {
+      const [_, ...propertyNames] = ref.split(".");
       // columnValue = requestBody[propertyName];
       let propertyKey = req;
       for (const propertyName of propertyNames) {
         propertyKey = propertyKey[propertyName];
       }
       columnValue = propertyKey;
-    } else if (fn && fn === 'equal') {
+    } else if (ref.startsWith("table:")) {
+      const [table, col] = ref.replace("table:", "").split(".");
+      if (prevFetchedTables[table][col]) {
+        columnValue = prevFetchedTables[table][col];
+        // const obj = {};
+        // obj[table] = {};
+        // obj[table][col] = columnValue;
+        // console.log(obj, " #$%^&*(*&^%$##$%^&*)");
+        // columnValue = obj;
+      }
+
+      console.log(columnValue, table, col, prevFetchedTables, " <<");
+    } else if (fn && fn === "equal") {
       columnValue = ref;
-    } else if (fn && fn === 'hash') {
-      hash = [...hash, { ref, tableName, columnName }]
+    } else if (fn && fn === "hash") {
+      hash = [...hash, { ref, tableName, columnName }];
       // columnValue = await functions.hash(ref);
       continue;
     }
 
     conditions.push(`${columnName} = '${columnValue}'`);
   }
-  const columnsString = columns.map(column => `\`${column}\``).join(', ');
-  let query = `SELECT ${columnsString} FROM ${tableName} `;
+  const isIdIncluded = columns.includes("id");
+  const columnsString = columns.map((column) => `\`${column}\``).join(", ");
+  let query = `SELECT ${isIdIncluded ? "" : "id,"} ${columnsString} FROM ${tableName} `;
 
   if (conditions.length) query += " WHERE ";
 
-  query += conditions.join(' AND ');
+  query += conditions.join(" AND ");
 
   try {
     // Execute the query
@@ -124,13 +165,13 @@ async function fetchDataForTable(connection, tableName, parameters, jwtColumnsTo
 
     return { tableData, hash };
   } catch (error) {
-    console.error('Error occurred while fetching data:', JSON.stringify(error));
+    console.error("Error occurred while fetching data:", JSON.stringify(error));
     throw error;
   }
 }
 
 function getNestedValue(obj, key) {
-  const propertyNames = key.split('.');
+  const propertyNames = key.split(".");
   let value = obj;
   for (const propertyName of propertyNames) {
     value = value[propertyName];
@@ -138,4 +179,4 @@ function getNestedValue(obj, key) {
   return value;
 }
 
-module.exports = { handleLogin }
+module.exports = { handleLogin };
