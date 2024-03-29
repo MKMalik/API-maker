@@ -24,7 +24,6 @@ async function postController(req, res, next) {
         null,
         defaultReferenceColumn,
       );
-      console.log(insertedDataResults);
 
       try {
         await connection.commit();
@@ -40,9 +39,9 @@ async function postController(req, res, next) {
           const token = jwt.sign(tokenData, req.endpoint.jwtSecret);
           res
             .status(200)
-            .json({ message: "Data inserted successfully", token });
+            .json({ message: endpoint.successMsg ?? "Data inserted successfully", token });
         } else {
-          res.status(200).json({ message: "Data inserted successfully" });
+          res.status(200).json({ message: endpoint.successMsg ?? "Data inserted successfully" });
         }
       } catch (error) {
         closeConnection(connection);
@@ -128,7 +127,6 @@ async function performNestedInserts(
 }
 
 async function insertIntoTable(connection, tableName, data) {
-  console.log("TCL: insertIntoTable -> tableName, data", tableName, data);
   return new Promise(async (resolve, reject) => {
     const query = `INSERT INTO ${tableName} SET ?`;
     try {

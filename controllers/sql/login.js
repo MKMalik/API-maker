@@ -50,18 +50,12 @@ async function handleLogin(req, res, next) {
       fetchedData[hashInfo.tableName][hashInfo.columnName],
       plainText,
     );
-    console.log(
-      fetchedData[hashInfo.tableName][hashInfo.columnName],
-      plainText,
-      isMatched,
-    );
     // console.log(hashedText, fetchedData[hashInfo.tableName][hashInfo.columnName]);
     if (!isMatched) {
       closeConnection(connection);
       return res
         .status(403)
         .json({ message: `Wrong value of ${hashInfo.ref} provided.` });
-      u;
     }
   }
 
@@ -75,9 +69,8 @@ async function handleLogin(req, res, next) {
   const { token, payload: jwtPayload } = jwt
     ? signJwt(jwtParams, jwtSecret, endpoint.jwtExpiry)
     : {};
-  console.log(fetchedData, " fetchedData", jwtParams);
   closeConnection(connection);
-  const response = { message: "Login succcess" };
+  const response = { message: endpoint.successMsg ?? "Login succcess" };
   if (token) {
     response.token = token;
     response.data = jwtPayload;
@@ -129,7 +122,6 @@ async function fetchDataForTable(
         // columnValue = obj;
       }
 
-      console.log(columnValue, table, col, prevFetchedTables, " <<");
     } else if (fn && fn === "equal") {
       columnValue = ref;
     } else if (fn && fn === "hash") {
@@ -151,7 +143,6 @@ async function fetchDataForTable(
   try {
     // Execute the query
     const [rows] = await connection.query(query);
-    // console.log(rows, query);
     // If data is found, populate tableData with the fetched row
     if (rows.length > 0) {
       const fetchedRow = rows[0]; // Assuming only one row is fetched
