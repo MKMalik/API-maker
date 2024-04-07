@@ -23,6 +23,7 @@ async function postController(req, res, next) {
         dataToInsert,
         null,
         defaultReferenceColumn,
+        req,
       );
 
       try {
@@ -39,9 +40,16 @@ async function postController(req, res, next) {
           const token = jwt.sign(tokenData, req.endpoint.jwtSecret);
           res
             .status(200)
-            .json({ message: endpoint.successMsg ?? "Data inserted successfully", token });
+            .json({
+              message: endpoint.successMsg ?? "Data inserted successfully",
+              token,
+            });
         } else {
-          res.status(200).json({ message: endpoint.successMsg ?? "Data inserted successfully" });
+          res
+            .status(200)
+            .json({
+              message: endpoint.successMsg ?? "Data inserted successfully",
+            });
         }
       } catch (error) {
         closeConnection(connection);
@@ -65,6 +73,7 @@ async function performNestedInserts(
   dataToInsert,
   parentId,
   referenceColumn,
+  req,
 ) {
   const insertedDataResults = []; // Array to store insertion results
   // tablesToInsert will be empty in case of login (it's login api when endpoint.jwt exists) api (as it does not require to insert any data but to fetch and authenticate)
@@ -78,9 +87,14 @@ async function performNestedInserts(
       const hasValue = Object.keys(columnDetail).includes("value");
       const fn = columnDetail.fn;
 
-      const valueToInsert = hasValue
-        ? columnValue
-        : dataToInsert[tableName][column];
+      const valueToInsert = resolveColumnValue(
+        hasValue,
+        columnValue,
+        dataToInsert,
+        tableName,
+        column,
+        req,
+      );
       switch (fn) {
         case "hash":
           insertData[column] = await calculateHash(valueToInsert);
@@ -118,6 +132,7 @@ async function performNestedInserts(
         dataToInsert,
         lastInsertId,
         referenceColumn,
+        req,
       );
       insertedDataResults.push(...nestedInsertionResults); // Store nested insertion results
     }
@@ -157,4 +172,42 @@ async function getDataForJWT(insertedDataResults, jwtColumns, dataToInsert) {
 
   return tokenData;
 }
+
+function resolveColumnValue(
+  hasValue,
+  columnValue,
+  dataToInsert,
+  tableName,
+  column,
+  req,
+) {
+  if (hasValue) {
+    // If columnValue is a simple value, return it directly
+    if (
+      typeof columnValue !== "string" ||
+      !columnValue.startsWith("decodedToken.")
+    ) {
+      return columnValue;
+    }
+
+    // Extract property from decodedToken
+    const decodedTokenProp = columnValue.split(".")[1];
+
+    // Check if req contains decodedToken
+    if (
+      req &&
+      req.decodedToken &&
+      req.decodedToken.hasOwnProperty(decodedTokenProp)
+    ) {
+      return req.decodedToken[decodedTokenProp];
+    } else {
+      // If decodedToken doesn't contain the property, return null or handle as needed
+      return null;
+    }
+  } else {
+    // If hasValue is false, return the value from dataToInsert
+    return dataToInsert[tableName][column];
+  }
+}
+
 module.exports = { postController };
