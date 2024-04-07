@@ -25,7 +25,7 @@ async function patchController(req, res) {
               filteredDataToUpdate[item.column] = hashedValue;
               break;
           }
-        } else filteredDataToUpdate[column] = body[item.column];
+        } else filteredDataToUpdate[item.column] = body[item.column];
       }
     }
     await connection.beginTransaction();
